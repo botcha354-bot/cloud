@@ -40,15 +40,22 @@ input[type=email], input[type=password], input[type=text] { width:100%; padding:
 /* Progress */
 #uploadProgress { margin-top:10px; display:none; color:#0070f3; }
 
-/* Public software cards */
-.wrap { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:20px; padding:10px; }
-.software { background:#fff; padding:20px; border:1px solid #ddd; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.05); text-align:center; transition: transform 0.2s ease, box-shadow 0.2s ease; }
-.software:hover { transform:translateY(-5px); box-shadow:0 4px 10px rgba(0,0,0,0.1); }
-.software img { width:64px; height:64px; object-fit:contain; margin-bottom:10px; }
-.software h2 { margin:0 0 10px 0; font-size:1.1em; color:#0070f3; }
-.download-btn { display:inline-block; margin-top:10px; padding:10px 18px; background:#0070f3; color:white; text-decoration:none; border-radius:6px; transition: background 0.2s ease; }
-.download-btn:hover { background:#0056c7; }
-.checksum { font-size:0.9em; color:#555; margin-top:8px; word-break:break-all; }
+/* Public software folders */
+.wrap { padding:10px; }
+.folder { background:#fff; padding:15px; border:1px solid #ddd; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.05); margin-bottom:10px; cursor:pointer; transition: transform 0.2s ease; }
+.folder:hover { transform:translateY(-2px); }
+.folder-header { display:flex; align-items:center; justify-content:space-between; font-weight:bold; color:#0070f3; }
+.folder-header::after { content: '▼'; font-size:0.8em; transition: transform 0.3s ease; }
+.folder.open .folder-header::after { transform: rotate(180deg); }
+.folder-content { display:none; margin-top:10px; padding-top:10px; border-top:1px solid #eee; }
+.folder.open .folder-content { display:block; }
+.folder-content .software { padding:15px; border:1px solid #f0f0f0; border-radius:8px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; background:#fafafa; }
+.folder-content .software:hover { background:#f0f8ff; }
+.folder-content .software img { width:48px; height:48px; object-fit:contain; margin-right:10px; }
+.folder-content .software-info { flex:1; text-align:left; }
+.folder-content .software-info h3 { margin:0 0 5px 0; font-size:1em; color:#333; }
+.folder-content .download-btn { padding:8px 12px; font-size:0.9em; }
+.folder-content .checksum { font-size:0.8em; color:#666; margin:0; }
 
 footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
 </style>
@@ -106,11 +113,11 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
 
 <!-- Search -->
 <div class="search-container" style="text-align:center; margin-bottom:20px;">
-  <input type="text" id="searchBox" placeholder="Search software...">
+  <input type="text" id="searchBox" placeholder="Search folders or files...">
 </div>
 
-<!-- Software List -->
-<div class="wrap" id="softwareList"></div>
+<!-- Software Folders -->
+<div class="wrap" id="softwareFolders"></div>
 
 <footer>© 2025 My Software Downloads</footer>
 
@@ -133,7 +140,7 @@ const dropArea = document.getElementById('dropArea');
 const fileInput = document.getElementById('fileInput');
 const folderInput = document.getElementById('folderName');
 const adminSoftwareList = document.getElementById('adminSoftwareList');
-const softwareList = document.getElementById('softwareList');
+const softwareFolders = document.getElementById('softwareFolders');
 const searchBox = document.getElementById('searchBox');
 const filePreview = document.getElementById('filePreview');
 const cancelFiles = document.getElementById('cancelFiles');
@@ -141,6 +148,7 @@ const uploadFiles = document.getElementById('uploadFiles');
 const uploadProgress = document.getElementById('uploadProgress');
 
 let selectedFiles = [];
+let allItems = [];
 
 // Admin login modal
 adminLoginBtn.addEventListener('click', () => loginModal.style.display = 'block');
@@ -278,39 +286,68 @@ uploadFiles.addEventListener('click', async () => {
   uploadProgress.style.display = 'none';
 });
 
-// Load software
+// Load software - Group by folder
 async function loadSoftware() {
   try {
     const { data: items, error } = await supabase.from('software').select('*').order('uploaded_at', { ascending: false });
     if (error) throw error;
 
-    const publicCards = [];
-    const adminItems = [];
+    allItems = items;
+
+    // Group by folder
+    const folders = {};
     items.forEach(item => {
-      publicCards.push(`
-        <div class="software">
-          <img src="${item.image_url}" alt="${item.title}">
-          <h2>[${item.folder}] ${item.title}</h2>
-          <a class="download-btn" href="${item.download_url}" download>Download</a>
-          <p class="checksum">${item.checksum}</p>
-        </div>
-      `);
-      adminItems.push(`
-        <div class="software-admin-item">
-          <strong>[${item.folder}] ${item.title}</strong>
-          <button class="btn btn-danger" onclick="deleteSoftware('${item.id}')">Delete</button>
-        </div>
-      `);
+      if (!folders[item.folder]) folders[item.folder] = [];
+      folders[item.folder].push(item);
     });
-    softwareList.innerHTML = publicCards.join('');
-    adminSoftwareList.innerHTML = adminItems.join('');
+
+    // Render public folders
+    const folderHtml = Object.entries(folders).map(([folderName, files]) => {
+      const count = files.length;
+      return `
+        <div class="folder" data-folder="${folderName}">
+          <div class="folder-header" onclick="toggleFolder('${folderName}')">
+            <span>${folderName} (${count} files)</span>
+          </div>
+          <div class="folder-content">
+            ${files.map(file => `
+              <div class="software">
+                <img src="${file.image_url}" alt="${file.title}">
+                <div class="software-info">
+                  <h3>${file.title}</h3>
+                  <p class="checksum">${file.checksum}</p>
+                </div>
+                <a class="download-btn" href="${file.download_url}" download>Download</a>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    softwareFolders.innerHTML = folderHtml || '<p>No folders yet. Upload some files!</p>';
+
+    // Admin flat list (unchanged)
+    const adminItems = items.map(item => `
+      <div class="software-admin-item">
+        <strong>[${item.folder}] ${item.title}</strong>
+        <button class="btn btn-danger" onclick="deleteSoftware('${item.id}')">Delete</button>
+      </div>
+    `).join('');
+    adminSoftwareList.innerHTML = adminItems;
+
   } catch (err) {
     console.error('Load error:', err);
-    // Graceful fail to empty list
   }
 }
 
-// Delete
+// Toggle folder expand/collapse
+window.toggleFolder = (folderName) => {
+  const folder = document.querySelector(`[data-folder="${folderName}"]`);
+  folder.classList.toggle('open');
+};
+
+// Delete (unchanged)
 window.deleteSoftware = async (id) => {
   if (!confirm('Delete this?')) return;
   try {
@@ -331,12 +368,26 @@ window.deleteSoftware = async (id) => {
   }
 };
 
-// Search
+// Search - Filter folders/files
 searchBox.addEventListener('input', () => {
   const term = searchBox.value.toLowerCase();
-  Array.from(softwareList.getElementsByClassName('software')).forEach(card => {
-    const title = card.querySelector('h2')?.textContent.toLowerCase() || '';
-    card.style.display = title.includes(term) ? 'block' : 'none';
+  const folders = document.querySelectorAll('.folder');
+  folders.forEach(folder => {
+    const folderName = folder.dataset.folder.toLowerCase();
+    const files = folder.querySelectorAll('.software');
+    const matchingFiles = Array.from(files).filter(file => 
+      file.querySelector('h3').textContent.toLowerCase().includes(term)
+    );
+    const hasMatch = folderName.includes(term) || matchingFiles.length > 0;
+
+    folder.style.display = hasMatch ? 'block' : 'none';
+
+    if (hasMatch) {
+      files.forEach(file => {
+        const fileText = file.querySelector('h3').textContent.toLowerCase();
+        file.style.display = fileText.includes(term) ? 'flex' : 'none';
+      });
+    }
   });
 });
 
