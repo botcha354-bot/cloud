@@ -87,7 +87,7 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
 
   <!-- Drag & Drop + File Preview -->
   <div id="dropArea">
-    <p>Drag & drop files here or click to select</p>
+    <p>Drag & drop files here or click to select (any file type allowed)</p>
     <input type="file" id="fileInput" multiple style="display:none">
   </div>
   <div id="filePreview"></div>
@@ -115,27 +115,11 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
 <footer>© 2025 My Software Downloads</footer>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-storage.js";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCX4kIednVMV7Lo1BNT7ht6TUsqAiofBC0",
-  authDomain: "cloud-afe3c.firebaseapp.com",
-  projectId: "cloud-afe3c",
-  storageBucket: "cloud-afe3c.firebasestorage.app",
-  messagingSenderId: "149642193133",
-  appId: "1:149642193133:web:cd4f22112f754bb1fdc4e4",
-  measurementId: "G-M9W6KYKEY9"
-};
-
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
+const supabaseUrl = 'https://hqwbffwvxgzqjkrygryr.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxd2JmZnd2eGd6cWprcnlncnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MjMwMDEsImV4cCI6MjA3NTM5OTAwMX0.mQ9vxp76KYcP10kQBD33sXOy56apQJDolbyv0CMPN3c';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Elements
 const adminLoginBtn = document.getElementById('adminLoginBtn');
@@ -159,87 +143,80 @@ const uploadProgress = document.getElementById('uploadProgress');
 let selectedFiles = [];
 
 // Admin login modal
-adminLoginBtn.addEventListener('click', ()=>loginModal.style.display='block');
-loginClose.addEventListener('click', ()=>loginModal.style.display='none');
-window.addEventListener('click', e=>{ if(e.target===loginModal) loginModal.style.display='none'; });
-loginSubmit.addEventListener('click', async ()=>{
+adminLoginBtn.addEventListener('click', () => loginModal.style.display = 'block');
+loginClose.addEventListener('click', () => loginModal.style.display = 'none');
+window.addEventListener('click', e => { if (e.target === loginModal) loginModal.style.display = 'none'; });
+loginSubmit.addEventListener('click', async () => {
   const email = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;
-  try{
-    await signInWithEmailAndPassword(auth,email,password);
-    loginError.style.display='none';
-    loginModal.style.display='none';
-  }catch(err){
+  try {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    loginError.style.display = 'none';
+    loginModal.style.display = 'none';
+  } catch (err) {
     console.error('Login error:', err);
-    loginError.style.display='block';
+    loginError.style.display = 'block';
   }
 });
-logoutBtn.addEventListener('click', async ()=>{
-  try {
-    await signOut(auth);
-  } catch (err) {
-    console.error('Logout error:', err);
-  }
+logoutBtn.addEventListener('click', async () => {
+  await supabase.auth.signOut();
 });
 
-onAuthStateChanged(auth,user=>{
-  if(user){
-    dashboard.style.display='block';
-    adminLoginBtn.style.display='none';
-    logoutBtn.style.display='inline-block';
+// Auth state listener
+supabase.auth.onAuthStateChange((event, session) => {
+  if (session) {
+    dashboard.style.display = 'block';
+    adminLoginBtn.style.display = 'none';
+    logoutBtn.style.display = 'inline-block';
     loadSoftware();
   } else {
-    dashboard.style.display='none';
-    adminLoginBtn.style.display='inline-block';
-    logoutBtn.style.display='none';
+    dashboard.style.display = 'none';
+    adminLoginBtn.style.display = 'inline-block';
+    logoutBtn.style.display = 'none';
   }
 });
 
 // Drag & Drop
-dropArea.addEventListener('click', ()=>fileInput.click());
-fileInput.addEventListener('change', (e)=>addFiles(e.target.files));
-dropArea.addEventListener('dragover', e=>{ e.preventDefault(); dropArea.classList.add('dragover'); });
-dropArea.addEventListener('dragleave', e=>{ e.preventDefault(); dropArea.classList.remove('dragover'); });
-dropArea.addEventListener('drop', e=>{
+dropArea.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', (e) => addFiles(e.target.files));
+dropArea.addEventListener('dragover', e => { e.preventDefault(); dropArea.classList.add('dragover'); });
+dropArea.addEventListener('dragleave', e => { e.preventDefault(); dropArea.classList.remove('dragover'); });
+dropArea.addEventListener('drop', e => {
   e.preventDefault();
   dropArea.classList.remove('dragover');
   addFiles(e.dataTransfer.files);
 });
 
-function addFiles(files){
-  for(const file of files){
-    if (selectedFiles.find(f => f.name === file.name && f.size === file.size)) {
-      console.warn('Duplicate file skipped:', file.name);
-      continue;
-    }
+function addFiles(files) {
+  for (const file of files) {
+    if (selectedFiles.find(f => f.name === file.name && f.size === file.size)) continue;
     selectedFiles.push(file);
   }
   renderPreview();
 }
 
-function renderPreview(){
-  filePreview.innerHTML='';
-  selectedFiles.forEach(file=>{
+function renderPreview() {
+  filePreview.innerHTML = '';
+  selectedFiles.forEach(file => {
     const div = document.createElement('div');
     div.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
     filePreview.appendChild(div);
   });
 }
 
-cancelFiles.addEventListener('click', ()=>{
+cancelFiles.addEventListener('click', () => {
   selectedFiles = [];
   renderPreview();
   uploadProgress.style.display = 'none';
 });
 
-uploadFiles.addEventListener('click', async ()=>{
+uploadFiles.addEventListener('click', async () => {
   const folder = folderInput.value.trim();
-  if(!folder){ alert('Enter folder name'); return; }
-  if(selectedFiles.length===0){ alert('No files selected'); return; }
+  if (!folder) { alert('Enter folder name'); return; }
+  if (selectedFiles.length === 0) { alert('No files selected'); return; }
 
-  // Sanitize folder name
   const safeFolder = folder.replace(/[^a-zA-Z0-9_-]/g, '_');
-
   uploadFiles.disabled = true;
   uploadFiles.textContent = 'Uploading...';
   uploadProgress.style.display = 'block';
@@ -248,118 +225,118 @@ uploadFiles.addEventListener('click', async ()=>{
   let successCount = 0;
   let errorCount = 0;
 
-  try {
-    for(let i = 0; i < selectedFiles.length; i++){
-      const file = selectedFiles[i];
-      uploadProgress.textContent = `Uploading ${i+1} of ${selectedFiles.length}: ${file.name}...`;
+  for (let i = 0; i < selectedFiles.length; i++) {
+    const file = selectedFiles[i];
+    uploadProgress.textContent = `Uploading ${i + 1} of ${selectedFiles.length}: ${file.name}...`;
 
-      console.log(`Uploading: ${file.name} to folder: ${safeFolder}`);
+    const checksum = `Size: ${file.size} bytes (SHA-256 pending)`;
+    const filePath = `${safeFolder}/${file.name}`;
+    
+    try {
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('software')
+        .upload(filePath, file, { upsert: true });
+      if (uploadError) throw uploadError;
 
-      // Simple checksum placeholder
-      const checksum = `Size: ${file.size} bytes (SHA-256 pending)`;
-      const storageRef = ref(storage, `software/${safeFolder}/${file.name}`);
-      
-      try {
-        await uploadBytes(storageRef, file);
-        const url = await getDownloadURL(storageRef);
-        await addDoc(collection(db, 'software'), {
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('software')
+        .getPublicUrl(filePath);
+
+      // Save metadata to DB
+      const { error: dbError } = await supabase
+        .from('software')
+        .insert({
           title: file.name,
           folder: safeFolder,
-          downloadUrl: url,
-          checksum: checksum,
-          imageUrl: 'https://via.placeholder.com/64',
-          uploadedAt: new Date().toISOString()
+          download_url: publicUrl,
+          checksum,
+          image_url: 'https://via.placeholder.com/64'
         });
-        successCount++;
-        console.log(`Success: ${file.name} uploaded`);
-      } catch (fileErr) {
-        console.error(`Error uploading ${file.name}:`, fileErr);
-        errorCount++;
-      }
-    }
+      if (dbError) throw dbError;
 
-    if (errorCount > 0) {
-      alert(`Upload partial: ${successCount} succeeded, ${errorCount} failed. Check console for details.`);
-    } else {
-      alert(`Upload complete! ${successCount} files added.`);
+      successCount++;
+    } catch (err) {
+      console.error(`Error uploading ${file.name}:`, err);
+      errorCount++;
     }
-
-    selectedFiles = [];
-    renderPreview();
-    folderInput.value = '';
-    loadSoftware();
-  } catch (err) {
-    console.error('Overall upload error:', err);
-    alert(`Upload failed: ${err.message}. Check Firebase setup and console.`);
-  } finally {
-    uploadFiles.disabled = false;
-    uploadFiles.textContent = 'Create';
-    uploadProgress.style.display = 'none';
   }
+
+  if (errorCount > 0) {
+    alert(`Partial upload: ${successCount} succeeded, ${errorCount} failed.`);
+  } else {
+    alert(`Upload complete! ${successCount} files added.`);
+  }
+
+  selectedFiles = [];
+  renderPreview();
+  folderInput.value = '';
+  loadSoftware();
+  uploadFiles.disabled = false;
+  uploadFiles.textContent = 'Create';
+  uploadProgress.style.display = 'none';
 });
 
-// Load software (public + admin list) - Optimized HTML building
-async function loadSoftware(){
+// Load software
+async function loadSoftware() {
   try {
-    const snapshot = await getDocs(collection(db, 'software'));
+    const { data: items, error } = await supabase.from('software').select('*').order('uploaded_at', { ascending: false });
+    if (error) throw error;
+
     const publicCards = [];
     const adminItems = [];
-    snapshot.forEach(docSnap=>{
-      const data = docSnap.data();
-      const id = docSnap.id;
-      // Public view
+    items.forEach(item => {
       publicCards.push(`
         <div class="software">
-          <img src="${data.imageUrl || 'https://via.placeholder.com/64'}" alt="${data.title}">
-          <h2>[${data.folder}] ${data.title}</h2>
-          <a class="download-btn" href="${data.downloadUrl}" download>Download</a>
-          <p class="checksum">${data.checksum}</p>
+          <img src="${item.image_url}" alt="${item.title}">
+          <h2>[${item.folder}] ${item.title}</h2>
+          <a class="download-btn" href="${item.download_url}" download>Download</a>
+          <p class="checksum">${item.checksum}</p>
         </div>
       `);
-      // Admin list
       adminItems.push(`
         <div class="software-admin-item">
-          <strong>[${data.folder}] ${data.title}</strong>
-          <button class="btn btn-danger" onclick="deleteSoftware('${id}')">Delete</button>
+          <strong>[${item.folder}] ${item.title}</strong>
+          <button class="btn btn-danger" onclick="deleteSoftware('${item.id}')">Delete</button>
         </div>
       `);
     });
     softwareList.innerHTML = publicCards.join('');
     adminSoftwareList.innerHTML = adminItems.join('');
   } catch (err) {
-    console.error('Load software error:', err);
-    alert('Failed to load software list. Check Firebase rules.');
+    console.error('Load error:', err);
+    // Graceful fail to empty list
   }
 }
 
-// Delete software
-window.deleteSoftware = async (id)=>{
-  if (!confirm('Delete this software?')) return;
-  const docRef = doc(db, 'software', id);
+// Delete
+window.deleteSoftware = async (id) => {
+  if (!confirm('Delete this?')) return;
   try {
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      const fileRef = ref(storage, `software/${data.folder}/${data.title}`);
-      await deleteObject(fileRef);
-      await deleteDoc(docRef);
-      loadSoftware();
-      alert('Deleted successfully!');
-    } else {
-      alert('Document not found.');
-    }
-  } catch (error) {
-    console.error('Delete error:', error);
-    alert('Error deleting: ' + error.message);
+    const { data: item } = await supabase.from('software').select('folder, title').eq('id', id).single();
+    if (!item) throw new Error('Not found');
+
+    // Delete from storage
+    const filePath = `${item.folder}/${item.title}`;
+    await supabase.storage.from('software').remove([filePath]);
+
+    // Delete from DB
+    await supabase.from('software').delete().eq('id', id);
+
+    loadSoftware();
+    alert('Deleted!');
+  } catch (err) {
+    alert('Delete error: ' + err.message);
   }
 };
 
 // Search
-searchBox.addEventListener('input', ()=>{
+searchBox.addEventListener('input', () => {
   const term = searchBox.value.toLowerCase();
-  Array.from(softwareList.getElementsByClassName('software')).forEach(card=>{
+  Array.from(softwareList.getElementsByClassName('software')).forEach(card => {
     const title = card.querySelector('h2')?.textContent.toLowerCase() || '';
-    card.style.display = title.includes(term)?'block':'none';
+    card.style.display = title.includes(term) ? 'block' : 'none';
   });
 });
 
