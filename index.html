@@ -233,15 +233,15 @@ uploadFiles.addEventListener('click', async () => {
     const filePath = `${safeFolder}/${file.name}`;
     
     try {
-      // Upload to storage
+      // Upload to storage (bucket: 'cloud')
       const { error: uploadError } = await supabase.storage
-        .from('software')
+        .from('cloud')
         .upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('software')
+        .from('cloud')
         .getPublicUrl(filePath);
 
       // Save metadata to DB
@@ -317,9 +317,9 @@ window.deleteSoftware = async (id) => {
     const { data: item } = await supabase.from('software').select('folder, title').eq('id', id).single();
     if (!item) throw new Error('Not found');
 
-    // Delete from storage
+    // Delete from storage (bucket: 'cloud')
     const filePath = `${item.folder}/${item.title}`;
-    await supabase.storage.from('software').remove([filePath]);
+    await supabase.storage.from('cloud').remove([filePath]);
 
     // Delete from DB
     await supabase.from('software').delete().eq('id', id);
