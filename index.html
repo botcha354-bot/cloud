@@ -1,13 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<link rel="icon" href="icon.png">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cloud folder</title>
+<title>Cloud Folder</title>
 <link rel="icon" href="icon.png" type="image/png">
 <style>
-body { font-family: Arial,sans-serif; margin:0; padding:20px; max-width:1000px; margin:auto; background:#f8f9fa; color:#333; }
+body { font-family: Arial,sans-serif; margin:0; padding:20px; max-width:1200px; margin:auto; background:#f8f9fa; color:#333; }
 h1 { text-align:center; margin-bottom:20px; color:#222; }
 
 /* Buttons */
@@ -20,52 +19,55 @@ button:disabled { background:#ccc; cursor:not-allowed; }
 /* Select */
 select { padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ccc; }
 
-/* Admin Modal */
+/* Modals */
 .modal { display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); }
 .modal-content { background:#fff; margin:15% auto; padding:20px; border-radius:10px; max-width:400px; text-align:center; position:relative; }
 .close { position:absolute; top:10px; right:15px; font-size:28px; cursor:pointer; }
 input[type=email], input[type=password], input[type=text] { width:90%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ccc; }
 
-/* Success/Error Modal */
-#messageModal .modal-content { max-width:300px; }
-#messageModal .success { color:#28a745; }
-#messageModal .error { color:#dc3545; }
+/* Progress */
+#uploadProgress { margin-top:10px; display:none; color:#0070f3; }
 
-/* Dashboard */
-#dashboard { display:none; margin-top:20px; background:#fff; padding:20px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.05); }
-#dashboard h2 { text-align:center; }
-.form-group { margin-bottom:15px; }
-.form-group label { display:block; margin-bottom:5px; }
-.software-list-admin { margin-top:20px; }
-.software-admin-item { border:1px solid #ddd; padding:10px; margin-bottom:10px; border-radius:5px; display:flex; align-items:center; justify-content:space-between; }
+/* Folder cards */
+.folder-card {
+  display:inline-block;
+  width:120px;
+  height:120px;
+  margin:10px;
+  background:#fff;
+  border:1px solid #ddd;
+  border-radius:10px;
+  text-align:center;
+  vertical-align:top;
+  cursor:pointer;
+  box-shadow:0 2px 5px rgba(0,0,0,0.1);
+  transition: transform 0.2s ease;
+}
+.folder-card:hover { transform:scale(1.05); }
+.folder-card img { width:60px; height:60px; margin-top:10px; }
+.folder-card span { display:block; margin-top:5px; font-size:0.9em; color:#0070f3; }
+
+/* Folder modal */
+.folder-modal { display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); overflow:auto; }
+.folder-modal-content { background:#fff; margin:50px auto; padding:20px; border-radius:10px; max-width:800px; }
+.folder-modal-header { display:flex; justify-content:space-between; align-items:center; }
+.folder-modal-header h2 { margin:0; }
+.folder-modal-close { cursor:pointer; font-size:24px; }
+.folder-files { display:flex; flex-wrap:wrap; gap:10px; margin-top:15px; }
+.file-item { width:100px; display:flex; flex-direction:column; align-items:center; }
+.file-item img { width:80px; height:80px; object-fit:cover; border-radius:6px; }
+.file-item span { font-size:0.75em; text-align:center; margin-top:5px; }
+.file-item a { font-size:0.7em; margin-top:3px; text-decoration:none; color:#0070f3; }
 
 /* Drag & Drop */
 #dropArea { border:2px dashed #0070f3; padding:30px; text-align:center; border-radius:10px; margin-bottom:20px; background:#fff; cursor:pointer; }
 #dropArea.dragover { background:#e0f0ff; }
 
-/* File Preview */
+/* File preview */
 #filePreview div { margin-bottom:5px; }
+#filePreview img { width:60px; height:60px; object-fit:cover; margin-right:5px; border-radius:5px; vertical-align:middle; }
 
-/* Progress */
-#uploadProgress { margin-top:10px; display:none; color:#0070f3; }
-
-/* Public software folders */
-.wrap { padding:10px; }
-.folder { background:#fff; padding:15px; border:1px solid #ddd; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.05); margin-bottom:10px; cursor:pointer; transition: transform 0.2s ease; }
-.folder:hover { transform:translateY(-2px); }
-.folder-header { display:flex; align-items:center; justify-content:space-between; font-weight:bold; color:#0070f3; }
-.folder-header::after { content: '▼'; font-size:0.8em; transition: transform 0.3s ease; }
-.folder.open .folder-header::after { transform: rotate(180deg); }
-.folder-content { display:none; margin-top:10px; padding-top:10px; border-top:1px solid #eee; }
-.folder.open .folder-content { display:block; }
-.folder-content .software { padding:15px; border:1px solid #f0f0f0; border-radius:8px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; background:#fafafa; }
-.folder-content .software:hover { background:#f0f8ff; }
-.folder-content .software img { width:48px; height:48px; object-fit:cover; margin-right:10px; border-radius:4px; }
-.folder-content .software-info { flex:1; text-align:left; }
-.folder-content .software-info h3 { margin:0 0 5px 0; font-size:1em; color:#333; }
-.folder-content .download-btn { padding:8px 12px; font-size:0.9em; }
-.folder-content .checksum { font-size:0.8em; color:#666; margin:0; }
-
+/* Footer */
 footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
 </style>
 </head>
@@ -73,13 +75,12 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
 
 <h1>Cloud Folder</h1>
 
-<!-- Login Button (now for any user) -->
+<!-- Login -->
 <div style="text-align:center; margin-bottom:20px;">
   <button class="btn btn-primary" id="userLoginBtn">Login to Upload</button>
   <button class="btn btn-danger" id="logoutBtn" style="display:none;">Logout</button>
 </div>
 
-<!-- Login Modal -->
 <div id="loginModal" class="modal">
   <div class="modal-content">
     <span class="close" id="loginClose">&times;</span>
@@ -91,52 +92,48 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
   </div>
 </div>
 
-<!-- Message Modal -->
-<div id="messageModal" class="modal">
-  <div class="modal-content">
-    <p id="messageText"></p>
-  </div>
-</div>
-
-<!-- Upload Dashboard (now for any logged-in user) -->
-<div id="dashboard">
+<div id="dashboard" style="display:none;">
   <h2>Upload Files</h2>
 
   <!-- Folder Selection -->
-  <div class="form-group">
-    <label for="folderSelect">Select or Add Folder:</label>
+  <div>
+    <label>Select or Add Folder:</label>
     <select id="folderSelect">
       <option value="">-- Add New Folder --</option>
     </select>
     <input type="text" id="newFolderName" placeholder="New folder name" style="display:none; margin-top:5px;">
   </div>
 
-  <!-- Drag & Drop + File Preview -->
+  <!-- Drag & Drop -->
   <div id="dropArea">
-    <p>Drag & drop files here or click to select (any file type allowed)</p>
+    <p>Drag & drop files here or click to select</p>
     <input type="file" id="fileInput" multiple style="display:none">
   </div>
   <div id="filePreview"></div>
 
-  <!-- Progress -->
   <div id="uploadProgress"></div>
-
-  <!-- Buttons -->
-  <div style="margin-top:10px;">
-    <button id="cancelFiles" class="btn btn-danger">Cancel</button>
-    <button id="uploadFiles" class="btn btn-success">Upload</button>
-  </div>
-
-  <div class="software-list-admin" id="userSoftwareList"></div>
+  <button id="cancelFiles" class="btn btn-danger">Cancel</button>
+  <button id="uploadFiles" class="btn btn-success">Upload</button>
 </div>
 
 <!-- Search -->
-<div class="search-container" style="text-align:center; margin-bottom:20px;">
+<div style="text-align:center; margin-bottom:20px;">
   <input type="text" id="searchBox" placeholder="Search folders or files...">
 </div>
 
-<!-- Software Folders -->
-<div class="wrap" id="softwareFolders"></div>
+<!-- Folders displayed as cards -->
+<div id="softwareFolders"></div>
+
+<!-- Folder modal -->
+<div id="folderModal" class="folder-modal">
+  <div class="folder-modal-content">
+    <div class="folder-modal-header">
+      <h2 id="modalFolderName">Folder</h2>
+      <span class="folder-modal-close" id="folderModalClose">&times;</span>
+    </div>
+    <div class="folder-files" id="modalFolderFiles"></div>
+  </div>
+</div>
 
 <footer>© 2025 Cloud Folder</footer>
 
@@ -147,7 +144,6 @@ const supabaseUrl = 'https://hqwbffwvxgzqjkrygryr.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxd2JmZnd2eGd6cWprcnlncnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MjMwMDEsImV4cCI6MjA3NTM5OTAwMX0.mQ9vxp76KYcP10kQBD33sXOy56apQJDolbyv0CMPN3c';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Elements
 const userLoginBtn = document.getElementById('userLoginBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 const loginModal = document.getElementById('loginModal');
@@ -159,324 +155,196 @@ const dropArea = document.getElementById('dropArea');
 const fileInput = document.getElementById('fileInput');
 const folderSelect = document.getElementById('folderSelect');
 const newFolderName = document.getElementById('newFolderName');
-const userSoftwareList = document.getElementById('userSoftwareList');
+const filePreview = document.getElementById('filePreview');
+const uploadFilesBtn = document.getElementById('uploadFiles');
+const cancelFilesBtn = document.getElementById('cancelFiles');
+const uploadProgress = document.getElementById('uploadProgress');
 const softwareFolders = document.getElementById('softwareFolders');
 const searchBox = document.getElementById('searchBox');
-const filePreview = document.getElementById('filePreview');
-const cancelFiles = document.getElementById('cancelFiles');
-const uploadFiles = document.getElementById('uploadFiles');
-const uploadProgress = document.getElementById('uploadProgress');
 
-// Message modal elements
-const messageModal = document.getElementById('messageModal');
-const messageText = document.getElementById('messageText');
+const folderModal = document.getElementById('folderModal');
+const folderModalClose = document.getElementById('folderModalClose');
+const modalFolderName = document.getElementById('modalFolderName');
+const modalFolderFiles = document.getElementById('modalFolderFiles');
 
 let selectedFiles = [];
 let allItems = [];
-let existingFolders = [];
+const imageExtensions = ['.jpg','.jpeg','.png','.gif','.bmp','.webp','.svg'];
 
-// Image extensions for preview
-const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
+// Login
+userLoginBtn.addEventListener('click', ()=>loginModal.style.display='block');
+loginClose.addEventListener('click', ()=>loginModal.style.display='none');
+window.addEventListener('click', e=>{if(e.target===loginModal) loginModal.style.display='none';});
 
-// Show message modal (success/error)
-function showMessage(message, isSuccess = true) {
-  messageText.textContent = message;
-  messageText.className = isSuccess ? 'success' : 'error';
-  messageModal.style.display = 'block';
-  setTimeout(() => {
-    messageModal.style.display = 'none';
-  }, 3000);
-}
-
-// User login modal
-userLoginBtn.addEventListener('click', () => loginModal.style.display = 'block');
-loginClose.addEventListener('click', () => loginModal.style.display = 'none');
-window.addEventListener('click', e => { if (e.target === loginModal) loginModal.style.display = 'none'; });
-
-// Enter key for login
-document.getElementById('loginEmail').addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') loginSubmit.click();
-});
-document.getElementById('loginPassword').addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') loginSubmit.click();
-});
-
-loginSubmit.addEventListener('click', async () => {
+loginSubmit.addEventListener('click', async ()=>{
   const email = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;
   try {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    loginError.style.display = 'none';
-    loginModal.style.display = 'none';
-  } catch (err) {
-    console.error('Login error:', err);
-    loginError.style.display = 'block';
+    if(error) throw error;
+    loginModal.style.display='none';
+  } catch(err){
+    loginError.style.display='block';
   }
 });
-logoutBtn.addEventListener('click', async () => {
+
+logoutBtn.addEventListener('click', async ()=>{
   await supabase.auth.signOut();
 });
 
-// Auth state listener
-supabase.auth.onAuthStateChange((event, session) => {
-  if (session) {
-    dashboard.style.display = 'block';
-    userLoginBtn.style.display = 'none';
-    logoutBtn.style.display = 'inline-block';
-    loadSoftware();
+// Auth state
+supabase.auth.onAuthStateChange((event, session)=>{
+  if(session){
+    dashboard.style.display='block';
+    userLoginBtn.style.display='none';
+    logoutBtn.style.display='inline-block';
+    loadFolderCards();
   } else {
-    dashboard.style.display = 'none';
-    userLoginBtn.style.display = 'inline-block';
-    logoutBtn.style.display = 'none';
+    dashboard.style.display='none';
+    userLoginBtn.style.display='inline-block';
+    logoutBtn.style.display='none';
   }
 });
 
-// Folder select change
-folderSelect.addEventListener('change', (e) => {
-  if (e.target.value === '') {
-    newFolderName.style.display = 'block';
-  } else {
-    newFolderName.style.display = 'none';
-    newFolderName.value = '';
-  }
+// Folder select
+folderSelect.addEventListener('change', e=>{
+  if(e.target.value==='') newFolderName.style.display='block';
+  else { newFolderName.style.display='none'; newFolderName.value=''; }
 });
 
-// Initialize folder input visibility on load
-function initializeFolderInput() {
-  newFolderName.style.display = 'block';  // Show by default since select starts with ""
-}
+// Drag & drop
+dropArea.addEventListener('click', ()=>fileInput.click());
+fileInput.addEventListener('change', e=>addFiles(e.target.files));
+dropArea.addEventListener('dragover', e=>{ e.preventDefault(); dropArea.classList.add('dragover'); });
+dropArea.addEventListener('dragleave', e=>{ e.preventDefault(); dropArea.classList.remove('dragover'); });
+dropArea.addEventListener('drop', e=>{ e.preventDefault(); dropArea.classList.remove('dragover'); addFiles(e.dataTransfer.files); });
 
-// Drag & Drop
-dropArea.addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', (e) => addFiles(e.target.files));
-dropArea.addEventListener('dragover', e => { e.preventDefault(); dropArea.classList.add('dragover'); });
-dropArea.addEventListener('dragleave', e => { e.preventDefault(); dropArea.classList.remove('dragover'); });
-dropArea.addEventListener('drop', e => {
-  e.preventDefault();
-  dropArea.classList.remove('dragover');
-  addFiles(e.dataTransfer.files);
-});
-
-function addFiles(files) {
-  for (const file of files) {
-    if (selectedFiles.find(f => f.name === file.name && f.size === file.size)) continue;
+function addFiles(files){
+  for(const file of files){
+    if(selectedFiles.find(f=>f.name===file.name && f.size===file.size)) continue;
     selectedFiles.push(file);
   }
   renderPreview();
 }
 
-function renderPreview() {
-  filePreview.innerHTML = '';
-  selectedFiles.forEach(file => {
+function renderPreview(){
+  filePreview.innerHTML='';
+  selectedFiles.forEach(file=>{
     const div = document.createElement('div');
-    div.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+    if(imageExtensions.includes(ext)){
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(file);
+      div.appendChild(img);
+    }
+    const text = document.createElement('span');
+    text.textContent = file.name;
+    div.appendChild(text);
     filePreview.appendChild(div);
   });
 }
 
-cancelFiles.addEventListener('click', () => {
-  selectedFiles = [];
+cancelFilesBtn.addEventListener('click', ()=>{
+  selectedFiles=[];
   renderPreview();
-  uploadProgress.style.display = 'none';
+  uploadProgress.style.display='none';
 });
 
-uploadFiles.addEventListener('click', async () => {
-  let folder = folderSelect.value;
-  if (!folder) {
-    folder = newFolderName.value.trim();
-    if (!folder) { showMessage('Select or enter a folder name', false); return; }
-  }
-  if (selectedFiles.length === 0) { showMessage('No files selected', false); return; }
+// Upload files
+uploadFilesBtn.addEventListener('click', async ()=>{
+  let folder = folderSelect.value || newFolderName.value.trim();
+  if(!folder){ alert('Select or enter a folder'); return; }
+  if(selectedFiles.length===0){ alert('No files selected'); return; }
 
-  const safeFolder = folder.replace(/[^a-zA-Z0-9_-]/g, '_');
-  uploadFiles.disabled = true;
-  uploadFiles.textContent = 'Uploading...';
-  uploadProgress.style.display = 'block';
-  uploadProgress.textContent = '';
+  const safeFolder = folder.replace(/[^a-zA-Z0-9_-]/g,'_');
+  uploadFilesBtn.disabled=true;
+  uploadFilesBtn.textContent='Uploading...';
+  uploadProgress.style.display='block';
+  uploadProgress.textContent='';
 
-  let successCount = 0;
-  let errorCount = 0;
+  let successCount=0, errorCount=0;
 
-  for (let i = 0; i < selectedFiles.length; i++) {
+  for(let i=0;i<selectedFiles.length;i++){
     const file = selectedFiles[i];
-    uploadProgress.textContent = `Uploading ${i + 1} of ${selectedFiles.length}: ${file.name}...`;
+    uploadProgress.textContent=`Uploading ${i+1}/${selectedFiles.length}: ${file.name}`;
 
-    const checksum = `Size: ${file.size} bytes (SHA-256 pending)`;
-    const filePath = `${safeFolder}/${file.name}`;
-    
-    try {
-      // Upload to storage (bucket: 'cloud')
-      const { error: uploadError } = await supabase.storage
-        .from('cloud')
-        .upload(filePath, file, { upsert: true });
-      if (uploadError) throw uploadError;
+    try{
+      const { error:uploadError } = await supabase.storage.from('cloud').upload(`${safeFolder}/${file.name}`, file, { upsert:true });
+      if(uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('cloud')
-        .getPublicUrl(filePath);
+      const { data:{ publicUrl } } = supabase.storage.from('cloud').getPublicUrl(`${safeFolder}/${file.name}`);
 
-      // Save metadata to DB
-      const { error: dbError } = await supabase
-        .from('software')
-        .insert({
-          title: file.name,
-          folder: safeFolder,
-          download_url: publicUrl,
-          checksum,
-          image_url: publicUrl  // Use file URL for potential preview
-        });
-      if (dbError) throw dbError;
-
+      const { error:dbError } = await supabase.from('software').insert({
+        title:file.name,
+        folder:safeFolder,
+        download_url:publicUrl,
+        checksum:`Size: ${file.size} bytes`,
+        image_url: publicUrl
+      });
+      if(dbError) throw dbError;
       successCount++;
-    } catch (err) {
-      console.error(`Error uploading ${file.name}:`, err);
+    } catch(err){
+      console.error(err);
       errorCount++;
     }
   }
 
-  if (errorCount > 0) {
-    showMessage(`Partial upload: ${successCount} succeeded, ${errorCount} failed.`, false);
-  } else {
-    showMessage(`Upload complete! ${successCount} files added to ${safeFolder}.`);
-  }
-
-  selectedFiles = [];
+  alert(`Upload done: ${successCount} success, ${errorCount} failed`);
+  selectedFiles=[];
   renderPreview();
-  folderSelect.value = '';
-  newFolderName.value = '';
-  newFolderName.style.display = 'none';
-  loadSoftware();
-  uploadFiles.disabled = false;
-  uploadFiles.textContent = 'Upload';
-  uploadProgress.style.display = 'none';
+  folderSelect.value='';
+  newFolderName.value='';
+  newFolderName.style.display='none';
+  uploadFilesBtn.disabled=false;
+  uploadFilesBtn.textContent='Upload';
+  uploadProgress.style.display='none';
+  loadFolderCards();
 });
 
-// Load software - Group by folder, with image previews
-async function loadSoftware() {
-  try {
-    const { data: items, error } = await supabase.from('software').select('*').order('uploaded_at', { ascending: false });
-    if (error) throw error;
+// Load folders as cards
+async function loadFolderCards(){
+  const { data: items } = await supabase.from('software').select('*').order('uploaded_at',{ascending:false});
+  allItems = items;
+  const folders = {};
+  items.forEach(item=>{ if(!folders[item.folder]) folders[item.folder]=[]; folders[item.folder].push(item); });
 
-    allItems = items;
+  folderSelect.innerHTML='<option value="">-- Add New Folder --</option>'+Object.keys(folders).map(f=>`<option value="${f}">${f}</option>`).join('');
 
-    // Extract unique folders
-    const folders = [...new Set(items.map(item => item.folder))].sort();
-    existingFolders = folders;
-
-    // Populate folder select
-    folderSelect.innerHTML = '<option value="">-- Add New Folder --</option>' + folders.map(f => `<option value="${f}">${f}</option>`).join('');
-
-    // Initialize folder input visibility
-    initializeFolderInput();
-
-    // Group by folder
-    const folderGroups = {};
-    items.forEach(item => {
-      if (!folderGroups[item.folder]) folderGroups[item.folder] = [];
-      folderGroups[item.folder].push(item);
-    });
-
-    // Render public folders
-    const folderHtml = Object.entries(folderGroups).map(([folderName, files]) => {
-      const count = files.length;
-      const sortedFiles = files.sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at));
-      return `
-        <div class="folder" data-folder="${folderName}">
-          <div class="folder-header" onclick="toggleFolder('${folderName}')">
-            <span>${folderName} (${count} files)</span>
-          </div>
-          <div class="folder-content">
-            ${sortedFiles.map(file => {
-              const ext = file.title.slice(file.title.lastIndexOf('.')).toLowerCase();
-              const isImage = imageExtensions.includes(ext);
-              return `
-                <div class="software">
-                  <img src="${isImage ? file.image_url : 'https://via.placeholder.com/48?text=📄'}" alt="${file.title}" onerror="this.src='https://via.placeholder.com/48?text=📄'">
-                  <div class="software-info">
-                    <h3>${file.title}</h3>
-                    <p class="checksum">${file.checksum}</p>
-                  </div>
-                  <a class="download-btn" href="${file.download_url}" download>Download</a>
-                </div>
-              `;
-            }).join('')}
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    softwareFolders.innerHTML = folderHtml || '<p>No folders yet. Upload some files!</p>';
-
-    // User flat list (for editing view)
-    const userItems = items.map(item => `
-      <div class="software-admin-item">
-        <strong>[${item.folder}] ${item.title}</strong>
-        <button class="btn btn-danger" onclick="deleteSoftware('${item.id}')">Delete</button>
-      </div>
-    `).join('');
-    userSoftwareList.innerHTML = userItems;
-
-  } catch (err) {
-    console.error('Load error:', err);
-  }
+  softwareFolders.innerHTML=Object.entries(folders).map(([name, files])=>`
+    <div class="folder-card" onclick="openFolder('${name}')">
+      <img src="https://cdn-icons-png.flaticon.com/512/715/715676.png">
+      <span>${name} (${files.length})</span>
+    </div>
+  `).join('');
 }
 
-// Toggle folder expand/collapse
-window.toggleFolder = (folderName) => {
-  const folder = document.querySelector(`[data-folder="${folderName}"]`);
-  folder.classList.toggle('open');
-};
+// Open folder modal
+folderModalClose.addEventListener('click', ()=>folderModal.style.display='none');
+window.openFolder=(folderName)=>{
+  modalFolderName.textContent=folderName;
+  const files = allItems.filter(f=>f.folder===folderName);
+  modalFolderFiles.innerHTML=files.map(file=>{
+    const ext = file.title.slice(file.title.lastIndexOf('.')).toLowerCase();
+    const isImage = imageExtensions.includes(ext);
+    return `
+      <div class="file-item">
+        <img src="${isImage?file.image_url:'https://via.placeholder.com/80?text=📄'}">
+        <span>${file.title}</span>
+        <a href="${file.download_url}" download>Download</a>
+      </div>
+    `;
+  }).join('');
+  folderModal.style.display='block';
+}
 
-// Delete (now for any user)
-window.deleteSoftware = async (id) => {
-  if (!confirm('Delete this?')) return;
-  try {
-    const { data: item } = await supabase.from('software').select('folder, title').eq('id', id).single();
-    if (!item) throw new Error('Not found');
-
-    // Delete from storage (bucket: 'cloud')
-    const filePath = `${item.folder}/${item.title}`;
-    await supabase.storage.from('cloud').remove([filePath]);
-
-    // Delete from DB
-    await supabase.from('software').delete().eq('id', id);
-
-    loadSoftware();
-    showMessage('File deleted successfully!');
-  } catch (err) {
-    showMessage('Delete error: ' + err.message, false);
-  }
-};
-
-// Search - Filter folders/files
-searchBox.addEventListener('input', () => {
+// Search folders
+searchBox.addEventListener('input', ()=>{
   const term = searchBox.value.toLowerCase();
-  const folders = document.querySelectorAll('.folder');
-  folders.forEach(folder => {
-    const folderName = folder.dataset.folder.toLowerCase();
-    const files = folder.querySelectorAll('.software');
-    const matchingFiles = Array.from(files).filter(file => 
-      file.querySelector('h3').textContent.toLowerCase().includes(term)
-    );
-    const hasMatch = folderName.includes(term) || matchingFiles.length > 0;
-
-    folder.style.display = hasMatch ? 'block' : 'none';
-
-    if (hasMatch) {
-      files.forEach(file => {
-        const fileText = file.querySelector('h3').textContent.toLowerCase();
-        file.style.display = fileText.includes(term) ? 'flex' : 'none';
-      });
-    }
+  document.querySelectorAll('.folder-card').forEach(card=>{
+    const text = card.querySelector('span').textContent.toLowerCase();
+    card.style.display = text.includes(term)?'inline-block':'none';
   });
 });
-
-// Initial load
-loadSoftware();
 </script>
 </body>
 </html>
-
-
