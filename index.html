@@ -3,82 +3,106 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nested Folder Storage - Admin</title>
+<title>My Software Downloads</title>
 <link rel="icon" href="icon.png" type="image/png">
 <style>
-  body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; background: #f8f9fa; }
-  h1, h2 { text-align: center; }
-  .folder-list, .file-list { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin-bottom: 20px; }
-  .folder-card, .file-card {
-    border: 1px solid #ddd; border-radius: 8px; padding: 15px; width: 150px; text-align: center;
-    background: #fff; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-  }
-  .folder-card:hover, .file-card:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-  #dropArea { border: 2px dashed #0070f3; padding: 30px; text-align: center; margin-bottom: 20px; border-radius: 10px; background-color: #fff; }
-  #dropArea.dragover { background-color: #e0f0ff; }
-  button { padding: 8px 15px; margin: 5px; border-radius: 5px; border: none; cursor: pointer; }
-  .btn-primary { background-color: #0070f3; color: white; }
-  .btn-success { background-color: #28a745; color: white; }
-  .btn-danger { background-color: #dc3545; color: white; }
-  #breadcrumb { margin-bottom: 20px; text-align: center; }
-  
-  /* Modal Styles */
-  .modal { display:none; position: fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background: rgba(0,0,0,0.5); }
-  .modal-content { background:#fff; padding:20px; max-width:400px; margin:15% auto; border-radius:10px; text-align:center; position:relative; }
-  .close { position:absolute; top:10px; right:15px; font-size:28px; cursor:pointer; }
-  .modal-content input { width: 100%; padding:10px; margin:5px 0; border-radius:5px; border:1px solid #ccc; }
+body { font-family: Arial,sans-serif; margin:0; padding:20px; max-width:1000px; margin:auto; background:#f8f9fa; color:#333; }
+h1 { text-align:center; margin-bottom:20px; color:#222; }
+
+/* Buttons */
+button { padding:10px 15px; margin:5px; border:none; border-radius:5px; cursor:pointer; }
+.btn-primary { background:#0070f3; color:white; }
+.btn-success { background:#28a745; color:white; }
+.btn-danger { background:#dc3545; color:white; }
+
+/* Admin Modal */
+.modal { display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); }
+.modal-content { background:#fff; margin:15% auto; padding:20px; border-radius:10px; max-width:400px; text-align:center; position:relative; }
+.close { position:absolute; top:10px; right:15px; font-size:28px; cursor:pointer; }
+input[type=email], input[type=password], input[type=text] { width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ccc; }
+
+/* Dashboard */
+#dashboard { display:none; margin-top:20px; background:#fff; padding:20px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.05); }
+#dashboard h2 { text-align:center; }
+.form-group { margin-bottom:15px; }
+.form-group label { display:block; margin-bottom:5px; }
+.software-list-admin { margin-top:20px; }
+.software-admin-item { border:1px solid #ddd; padding:10px; margin-bottom:10px; border-radius:5px; display:flex; align-items:center; justify-content:space-between; }
+
+/* Folder upload */
+#dropArea { border:2px dashed #0070f3; padding:30px; text-align:center; border-radius:10px; margin-bottom:20px; background:#fff; }
+#dropArea.dragover { background:#e0f0ff; }
+
+/* Public software cards */
+.wrap { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:20px; padding:10px; }
+.software { background:#fff; padding:20px; border:1px solid #ddd; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.05); text-align:center; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.software:hover { transform:translateY(-5px); box-shadow:0 4px 10px rgba(0,0,0,0.1); }
+.software img { width:64px; height:64px; object-fit:contain; margin-bottom:10px; }
+.software h2 { margin:0 0 10px 0; font-size:1.1em; color:#0070f3; }
+.download-btn { display:inline-block; margin-top:10px; padding:10px 18px; background:#0070f3; color:white; text-decoration:none; border-radius:6px; transition: background 0.2s ease; }
+.download-btn:hover { background:#0056c7; }
+.checksum { font-size:0.9em; color:#555; margin-top:8px; word-break:break-all; }
+
+footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
 </style>
 </head>
 <body>
 
-<h1>Nested Folder Storage</h1>
+<h1>Download Center</h1>
 
-<!-- Admin Buttons -->
-<div style="text-align:center; margin-bottom:10px;">
-  <button class="btn btn-primary" onclick="openLoginModal()">Admin Login</button>
-  <button class="btn btn-danger" onclick="logout()" id="logoutBtn" style="display:none;">Logout</button>
+<!-- Admin Login Button -->
+<div style="text-align:center; margin-bottom:20px;">
+  <button class="btn btn-primary" id="adminLoginBtn">Admin Login</button>
+  <button class="btn btn-danger" id="logoutBtn" style="display:none;">Logout</button>
 </div>
 
 <!-- Login Modal -->
 <div id="loginModal" class="modal">
   <div class="modal-content">
-    <span class="close" onclick="closeLoginModal()">&times;</span>
+    <span class="close" id="loginClose">&times;</span>
     <h3>Admin Login</h3>
-    <input type="email" id="loginEmail" placeholder="Email">
+    <input type="email" id="loginEmail" placeholder="Email (e.g., admin@example.com)">
     <input type="password" id="loginPassword" placeholder="Password">
-    <button class="btn btn-success" onclick="login()">Login</button>
+    <button class="btn btn-success" id="loginSubmit">Login</button>
     <p id="loginError" style="color:red; display:none;">Invalid credentials!</p>
   </div>
 </div>
 
-<!-- Breadcrumb -->
-<div id="breadcrumb"></div>
+<!-- Admin Dashboard -->
+<div id="dashboard">
+  <h2>Admin Dashboard</h2>
+  
+  <!-- Folder Name Input -->
+  <div class="form-group">
+    <label for="folderName">Folder Name:</label>
+    <input type="text" id="folderName" placeholder="Enter folder name">
+  </div>
 
-<!-- Admin Controls -->
-<div id="adminControls" style="text-align:center; display:none;">
-  <input type="text" id="newFolderName" placeholder="New Folder Name">
-  <button class="btn btn-success" onclick="createSubfolder()">Create Folder</button>
+  <!-- Drag & Drop Upload -->
+  <div id="dropArea">
+    <p>Drag & drop files here or click to select</p>
+    <input type="file" id="fileInput" multiple style="display:none">
+  </div>
+  
+  <div class="software-list-admin" id="adminSoftwareList"></div>
 </div>
 
-<!-- Drag & Drop -->
-<div id="dropArea" style="display:none;">
-  <p>Drag & drop files here, or click to select</p>
-  <input type="file" id="fileInput" multiple style="display:none">
+<!-- Search -->
+<div class="search-container" style="text-align:center; margin-bottom:20px;">
+  <input type="text" id="searchBox" placeholder="Search software...">
 </div>
 
-<h2>Folders</h2>
-<div class="folder-list" id="folderList"></div>
+<!-- Software List -->
+<div class="wrap" id="softwareList"></div>
 
-<h2>Files</h2>
-<div class="file-list" id="fileList"></div>
+<footer>© 2025 My Software Downloads</footer>
 
-<!-- Firebase Scripts -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
-import { getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-storage.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCX4kIednVMV7Lo1BNT7ht6TUsqAiofBC0",
@@ -92,159 +116,133 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
+const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const auth = getAuth(app);
 
-let currentFolderId = null;
+// Elements
+const adminLoginBtn = document.getElementById('adminLoginBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const loginModal = document.getElementById('loginModal');
+const loginClose = document.getElementById('loginClose');
+const loginSubmit = document.getElementById('loginSubmit');
+const loginError = document.getElementById('loginError');
+const dashboard = document.getElementById('dashboard');
+const dropArea = document.getElementById('dropArea');
+const fileInput = document.getElementById('fileInput');
+const folderInput = document.getElementById('folderName');
+const adminSoftwareList = document.getElementById('adminSoftwareList');
+const softwareList = document.getElementById('softwareList');
+const searchBox = document.getElementById('searchBox');
 
-// Auth state listener
-onAuthStateChanged(auth, user => {
-  if(user){
-    document.getElementById('adminControls').style.display = 'block';
-    document.getElementById('dropArea').style.display = 'block';
-    document.getElementById('logoutBtn').style.display = 'inline-block';
-    closeLoginModal();
-  } else {
-    document.getElementById('adminControls').style.display = 'none';
-    document.getElementById('dropArea').style.display = 'none';
-    document.getElementById('logoutBtn').style.display = 'none';
-  }
-});
+// Login modal
+adminLoginBtn.addEventListener('click', ()=>loginModal.style.display='block');
+loginClose.addEventListener('click', ()=>loginModal.style.display='none');
+window.addEventListener('click', (e)=> { if(e.target===loginModal) loginModal.style.display='none'; });
 
-function openLoginModal(){ document.getElementById('loginModal').style.display='block'; }
-function closeLoginModal(){ document.getElementById('loginModal').style.display='none'; }
-function logout(){ signOut(auth); }
-
-async function login(){
+loginSubmit.addEventListener('click', async ()=>{
   const email = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;
   try{
     await signInWithEmailAndPassword(auth,email,password);
-    document.getElementById('loginError').style.display='none';
+    loginError.style.display='none';
+    loginModal.style.display='none';
   } catch(err){
-    document.getElementById('loginError').style.display='block';
+    loginError.style.display='block';
   }
-}
+});
 
-// Initialize root folder if not exists
-async function initRootFolder() {
-  const rootSnap = await getDocs(collection(db,'folders'));
-  if(rootSnap.empty){
-    const rootRef = await addDoc(collection(db,'folders'), { title:'Root', parentId:null, subfolders:[], files:[] });
-    currentFolderId = rootRef.id;
+logoutBtn.addEventListener('click', ()=>signOut(auth));
+
+onAuthStateChanged(auth,user=>{
+  if(user){
+    dashboard.style.display='block';
+    adminLoginBtn.style.display='none';
+    logoutBtn.style.display='inline-block';
+    loadSoftware();
   } else {
-    const rootDoc = rootSnap.docs.find(d=>d.data().parentId===null);
-    currentFolderId = rootDoc.id;
+    dashboard.style.display='none';
+    adminLoginBtn.style.display='inline-block';
+    logoutBtn.style.display='none';
   }
-  loadFolder(currentFolderId);
-}
-
-// Load folder content
-async function loadFolder(folderId){
-  currentFolderId = folderId;
-  const folderSnap = await getDoc(doc(db,'folders',folderId));
-  const folderData = folderSnap.data();
-  await renderBreadcrumb(folderId);
-
-  // Render subfolders
-  const folderList = document.getElementById('folderList'); folderList.innerHTML='';
-  for(let subId of folderData.subfolders){
-    const subSnap = await getDoc(doc(db,'folders',subId));
-    const subData = subSnap.data();
-    const div = document.createElement('div'); div.className='folder-card';
-    div.innerHTML = `<span>${subData.title}</span><br>`;
-    const openBtn = document.createElement('button'); openBtn.textContent='Open'; openBtn.className='btn btn-primary';
-    openBtn.onclick = ()=>loadFolder(subId); div.appendChild(openBtn);
-    const delBtn = document.createElement('button'); delBtn.textContent='Delete'; delBtn.className='btn btn-danger';
-    delBtn.onclick = ()=>deleteFolder(subId); div.appendChild(delBtn);
-    folderList.appendChild(div);
-  }
-
-  // Render files
-  const fileList = document.getElementById('fileList'); fileList.innerHTML='';
-  for(let file of folderData.files){
-    const div = document.createElement('div'); div.className='file-card';
-    div.innerHTML = `<span>${file.name}</span><br><a class="btn btn-primary" href="${file.url}" download>Download</a>`;
-    const delBtn = document.createElement('button'); delBtn.textContent='Delete'; delBtn.className='btn btn-danger';
-    delBtn.onclick = ()=>deleteFile(file.name); div.appendChild(delBtn);
-    fileList.appendChild(div);
-  }
-}
-
-// Render breadcrumb
-async function renderBreadcrumb(folderId){
-  const breadcrumbDiv = document.getElementById('breadcrumb'); breadcrumbDiv.innerHTML='';
-  let path=[]; let currentId=folderId;
-  while(currentId){
-    const docSnap = await getDoc(doc(db,'folders',currentId));
-    const data = docSnap.data();
-    path.unshift({id:currentId,title:data.title});
-    currentId = data.parentId;
-  }
-  path.forEach((p,index)=>{
-    const span=document.createElement('span'); span.textContent=p.title; span.style.cursor='pointer'; span.style.textDecoration='underline';
-    span.onclick=()=>loadFolder(p.id); breadcrumbDiv.appendChild(span);
-    if(index<path.length-1) breadcrumbDiv.appendChild(document.createTextNode(' / '));
-  });
-}
-
-// Create subfolder
-async function createSubfolder(){
-  const name=document.getElementById('newFolderName').value.trim();
-  if(!name) return alert('Folder name cannot be empty');
-  const newFolderRef = await addDoc(collection(db,'folders'), { title:name, parentId:currentFolderId, subfolders:[], files:[] });
-  await updateDoc(doc(db,'folders',currentFolderId), { subfolders: arrayUnion(newFolderRef.id) });
-  document.getElementById('newFolderName').value='';
-  loadFolder(currentFolderId);
-}
-
-// Delete folder recursively
-async function deleteFolder(folderId){
-  if(!confirm('Delete this folder and all contents?')) return;
-  const folderSnap = await getDoc(doc(db,'folders',folderId)); const folderData=folderSnap.data();
-  for(let file of folderData.files){ await deleteObject(ref(storage, `folders/${folderId}/${file.name}`)); }
-  for(let subId of folderData.subfolders){ await deleteFolder(subId); }
-  if(folderData.parentId) await updateDoc(doc(db,'folders',folderData.parentId), { subfolders: arrayRemove(folderId) });
-  await deleteDoc(doc(db,'folders',folderId));
-  loadFolder(currentFolderId);
-}
-
-// Delete file
-async function deleteFile(fileName){
-  if(!confirm('Delete this file?')) return;
-  const fileRef = ref(storage, `folders/${currentFolderId}/${fileName}`);
-  await deleteObject(fileRef);
-  const folderRef = doc(db,'folders',currentFolderId);
-  const folderSnap = await getDoc(folderRef); const folderData=folderSnap.data();
-  const newFiles = folderData.files.filter(f=>f.name!==fileName);
-  await updateDoc(folderRef,{ files: newFiles });
-  loadFolder(currentFolderId);
-}
+});
 
 // Drag & Drop Upload
-const dropArea=document.getElementById('dropArea'); const fileInput=document.getElementById('fileInput');
-dropArea.addEventListener('click',()=>fileInput.click());
+dropArea.addEventListener('click', ()=>fileInput.click());
 fileInput.addEventListener('change', ()=>handleFiles(fileInput.files));
 dropArea.addEventListener('dragover', e=>{ e.preventDefault(); dropArea.classList.add('dragover'); });
 dropArea.addEventListener('dragleave', e=>{ e.preventDefault(); dropArea.classList.remove('dragover'); });
-dropArea.addEventListener('drop', e=>{ e.preventDefault(); dropArea.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
+dropArea.addEventListener('drop', e=>{
+  e.preventDefault();
+  dropArea.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
 
 async function handleFiles(files){
+  const folder = folderInput.value.trim();
+  if(!folder){ alert('Please enter a folder name'); return; }
   for(const file of files){
-    const storageRef=ref(storage, `folders/${currentFolderId}/${file.name}`);
+    const storageRef = ref(storage, `software/${folder}/${file.name}`);
     await uploadBytes(storageRef,file);
     const url = await getDownloadURL(storageRef);
-    const folderRef=doc(db,'folders',currentFolderId);
-    const folderSnap = await getDoc(folderRef); const folderData = folderSnap.data();
-    const newFiles = folderData.files.concat({name:file.name, url:url});
-    await updateDoc(folderRef,{ files: newFiles });
+    await addDoc(collection(db,'software'), { 
+      title: file.name, 
+      folder: folder,
+      downloadUrl: url, 
+      checksum: 'Uploaded file', 
+      imageUrl:'https://via.placeholder.com/64' 
+    });
   }
-  loadFolder(currentFolderId);
+  loadSoftware();
 }
 
-// Initialize
-initRootFolder();
+// Load software
+async function loadSoftware(){
+  const snapshot = await getDocs(collection(db,'software'));
+  softwareList.innerHTML='';
+  adminSoftwareList.innerHTML='';
+  snapshot.forEach(docSnap=>{
+    const data = docSnap.data();
+    const id = docSnap.id;
+    // Public view grouped by folder
+    softwareList.innerHTML+=`
+      <div class="software">
+        <img src="${data.imageUrl}" alt="${data.title}">
+        <h2>[${data.folder}] ${data.title}</h2>
+        <a class="download-btn" href="${data.downloadUrl}" download>Download</a>
+        <p class="checksum">${data.checksum}</p>
+      </div>
+    `;
+    // Admin list
+    adminSoftwareList.innerHTML+=`
+      <div class="software-admin-item">
+        <strong>[${data.folder}] ${data.title}</strong>
+        <button class="btn btn-danger" onclick="deleteSoftware('${id}')">Delete</button>
+      </div>
+    `;
+  });
+}
+
+// Delete software
+window.deleteSoftware = async (id)=>{
+  const docRef = doc(db,'software',id);
+  const docSnap = await doc(db,'software',id);
+  const data = (await docSnap.get()).data();
+  const fileRef = ref(storage, `software/${data.folder}/${data.title}`);
+  await deleteObject(fileRef);
+  await deleteDoc(docRef);
+  loadSoftware();
+};
+
+// Search
+searchBox.addEventListener('input', ()=>{
+  const term = searchBox.value.toLowerCase();
+  Array.from(softwareList.getElementsByClassName('software')).forEach(card=>{
+    const title = card.querySelector('h2').textContent.toLowerCase();
+    card.style.display = title.includes(term)?'block':'none';
+  });
+});
 </script>
+
 </body>
 </html>
