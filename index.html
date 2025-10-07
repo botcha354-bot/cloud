@@ -16,6 +16,9 @@ button { padding:10px 15px; margin:5px; border:none; border-radius:5px; cursor:p
 .btn-danger { background:#dc3545; color:white; }
 button:disabled { background:#ccc; cursor:not-allowed; }
 
+/* Select */
+select { padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ccc; }
+
 /* Admin Modal */
 .modal { display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); }
 .modal-content { background:#fff; margin:15% auto; padding:20px; border-radius:10px; max-width:400px; text-align:center; position:relative; }
@@ -51,7 +54,7 @@ input[type=email], input[type=password], input[type=text] { width:100%; padding:
 .folder.open .folder-content { display:block; }
 .folder-content .software { padding:15px; border:1px solid #f0f0f0; border-radius:8px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; background:#fafafa; }
 .folder-content .software:hover { background:#f0f8ff; }
-.folder-content .software img { width:48px; height:48px; object-fit:contain; margin-right:10px; }
+.folder-content .software img { width:48px; height:48px; object-fit:cover; margin-right:10px; border-radius:4px; }
 .folder-content .software-info { flex:1; text-align:left; }
 .folder-content .software-info h3 { margin:0 0 5px 0; font-size:1em; color:#333; }
 .folder-content .download-btn { padding:8px 12px; font-size:0.9em; }
@@ -64,9 +67,9 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
 
 <h1>Download Center</h1>
 
-<!-- Admin Login Button -->
+<!-- Login Button (now for any user) -->
 <div style="text-align:center; margin-bottom:20px;">
-  <button class="btn btn-primary" id="adminLoginBtn">Admin Login</button>
+  <button class="btn btn-primary" id="userLoginBtn">Login to Upload</button>
   <button class="btn btn-danger" id="logoutBtn" style="display:none;">Logout</button>
 </div>
 
@@ -74,22 +77,25 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
 <div id="loginModal" class="modal">
   <div class="modal-content">
     <span class="close" id="loginClose">&times;</span>
-    <h3>Admin Login</h3>
-    <input type="email" id="loginEmail" placeholder="Email (e.g., admin@example.com)">
+    <h3>User Login</h3>
+    <input type="email" id="loginEmail" placeholder="Email">
     <input type="password" id="loginPassword" placeholder="Password">
     <button class="btn btn-success" id="loginSubmit">Login</button>
     <p id="loginError" style="color:red; display:none;">Invalid credentials!</p>
   </div>
 </div>
 
-<!-- Admin Dashboard -->
+<!-- Upload Dashboard (now for any logged-in user) -->
 <div id="dashboard">
-  <h2>Admin Dashboard</h2>
+  <h2>Upload Files</h2>
 
-  <!-- Folder Name Input -->
+  <!-- Folder Selection -->
   <div class="form-group">
-    <label for="folderName">Folder Name:</label>
-    <input type="text" id="folderName" placeholder="Enter folder name">
+    <label for="folderSelect">Select or Add Folder:</label>
+    <select id="folderSelect">
+      <option value="">-- Add New Folder --</option>
+    </select>
+    <input type="text" id="newFolderName" placeholder="New folder name" style="display:none; margin-top:5px;">
   </div>
 
   <!-- Drag & Drop + File Preview -->
@@ -105,10 +111,10 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
   <!-- Buttons -->
   <div style="margin-top:10px;">
     <button id="cancelFiles" class="btn btn-danger">Cancel</button>
-    <button id="uploadFiles" class="btn btn-success">Create</button>
+    <button id="uploadFiles" class="btn btn-success">Upload</button>
   </div>
 
-  <div class="software-list-admin" id="adminSoftwareList"></div>
+  <div class="software-list-admin" id="userSoftwareList"></div>
 </div>
 
 <!-- Search -->
@@ -129,7 +135,7 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Elements
-const adminLoginBtn = document.getElementById('adminLoginBtn');
+const userLoginBtn = document.getElementById('userLoginBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 const loginModal = document.getElementById('loginModal');
 const loginClose = document.getElementById('loginClose');
@@ -138,8 +144,9 @@ const loginError = document.getElementById('loginError');
 const dashboard = document.getElementById('dashboard');
 const dropArea = document.getElementById('dropArea');
 const fileInput = document.getElementById('fileInput');
-const folderInput = document.getElementById('folderName');
-const adminSoftwareList = document.getElementById('adminSoftwareList');
+const folderSelect = document.getElementById('folderSelect');
+const newFolderName = document.getElementById('newFolderName');
+const userSoftwareList = document.getElementById('userSoftwareList');
 const softwareFolders = document.getElementById('softwareFolders');
 const searchBox = document.getElementById('searchBox');
 const filePreview = document.getElementById('filePreview');
@@ -149,9 +156,13 @@ const uploadProgress = document.getElementById('uploadProgress');
 
 let selectedFiles = [];
 let allItems = [];
+let existingFolders = [];
 
-// Admin login modal
-adminLoginBtn.addEventListener('click', () => loginModal.style.display = 'block');
+// Image extensions for preview
+const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
+
+// User login modal
+userLoginBtn.addEventListener('click', () => loginModal.style.display = 'block');
 loginClose.addEventListener('click', () => loginModal.style.display = 'none');
 window.addEventListener('click', e => { if (e.target === loginModal) loginModal.style.display = 'none'; });
 loginSubmit.addEventListener('click', async () => {
@@ -175,13 +186,23 @@ logoutBtn.addEventListener('click', async () => {
 supabase.auth.onAuthStateChange((event, session) => {
   if (session) {
     dashboard.style.display = 'block';
-    adminLoginBtn.style.display = 'none';
+    userLoginBtn.style.display = 'none';
     logoutBtn.style.display = 'inline-block';
     loadSoftware();
   } else {
     dashboard.style.display = 'none';
-    adminLoginBtn.style.display = 'inline-block';
+    userLoginBtn.style.display = 'inline-block';
     logoutBtn.style.display = 'none';
+  }
+});
+
+// Folder select change
+folderSelect.addEventListener('change', (e) => {
+  if (e.target.value === '') {
+    newFolderName.style.display = 'block';
+  } else {
+    newFolderName.style.display = 'none';
+    newFolderName.value = '';
   }
 });
 
@@ -220,8 +241,11 @@ cancelFiles.addEventListener('click', () => {
 });
 
 uploadFiles.addEventListener('click', async () => {
-  const folder = folderInput.value.trim();
-  if (!folder) { alert('Enter folder name'); return; }
+  let folder = folderSelect.value;
+  if (!folder) {
+    folder = newFolderName.value.trim();
+    if (!folder) { alert('Select or enter a folder name'); return; }
+  }
   if (selectedFiles.length === 0) { alert('No files selected'); return; }
 
   const safeFolder = folder.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -260,7 +284,7 @@ uploadFiles.addEventListener('click', async () => {
           folder: safeFolder,
           download_url: publicUrl,
           checksum,
-          image_url: 'https://via.placeholder.com/64'
+          image_url: publicUrl  // Use file URL for potential preview
         });
       if (dbError) throw dbError;
 
@@ -274,19 +298,21 @@ uploadFiles.addEventListener('click', async () => {
   if (errorCount > 0) {
     alert(`Partial upload: ${successCount} succeeded, ${errorCount} failed.`);
   } else {
-    alert(`Upload complete! ${successCount} files added.`);
+    alert(`Upload complete! ${successCount} files added to ${safeFolder}.`);
   }
 
   selectedFiles = [];
   renderPreview();
-  folderInput.value = '';
+  folderSelect.value = '';
+  newFolderName.value = '';
+  newFolderName.style.display = 'none';
   loadSoftware();
   uploadFiles.disabled = false;
-  uploadFiles.textContent = 'Create';
+  uploadFiles.textContent = 'Upload';
   uploadProgress.style.display = 'none';
 });
 
-// Load software - Group by folder
+// Load software - Group by folder, with image previews
 async function loadSoftware() {
   try {
     const { data: items, error } = await supabase.from('software').select('*').order('uploaded_at', { ascending: false });
@@ -294,32 +320,44 @@ async function loadSoftware() {
 
     allItems = items;
 
+    // Extract unique folders
+    const folders = [...new Set(items.map(item => item.folder))].sort();
+    existingFolders = folders;
+
+    // Populate folder select
+    folderSelect.innerHTML = '<option value="">-- Add New Folder --</option>' + folders.map(f => `<option value="${f}">${f}</option>`).join('');
+
     // Group by folder
-    const folders = {};
+    const folderGroups = {};
     items.forEach(item => {
-      if (!folders[item.folder]) folders[item.folder] = [];
-      folders[item.folder].push(item);
+      if (!folderGroups[item.folder]) folderGroups[item.folder] = [];
+      folderGroups[item.folder].push(item);
     });
 
     // Render public folders
-    const folderHtml = Object.entries(folders).map(([folderName, files]) => {
+    const folderHtml = Object.entries(folderGroups).map(([folderName, files]) => {
       const count = files.length;
+      const sortedFiles = files.sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at));
       return `
         <div class="folder" data-folder="${folderName}">
           <div class="folder-header" onclick="toggleFolder('${folderName}')">
             <span>${folderName} (${count} files)</span>
           </div>
           <div class="folder-content">
-            ${files.map(file => `
-              <div class="software">
-                <img src="${file.image_url}" alt="${file.title}">
-                <div class="software-info">
-                  <h3>${file.title}</h3>
-                  <p class="checksum">${file.checksum}</p>
+            ${sortedFiles.map(file => {
+              const ext = file.title.slice(file.title.lastIndexOf('.')).toLowerCase();
+              const isImage = imageExtensions.includes(ext);
+              return `
+                <div class="software">
+                  <img src="${isImage ? file.image_url : 'https://via.placeholder.com/48?text=📄'}" alt="${file.title}" onerror="this.src='https://via.placeholder.com/48?text=📄'">
+                  <div class="software-info">
+                    <h3>${file.title}</h3>
+                    <p class="checksum">${file.checksum}</p>
+                  </div>
+                  <a class="download-btn" href="${file.download_url}" download>Download</a>
                 </div>
-                <a class="download-btn" href="${file.download_url}" download>Download</a>
-              </div>
-            `).join('')}
+              `;
+            }).join('')}
           </div>
         </div>
       `;
@@ -327,14 +365,14 @@ async function loadSoftware() {
 
     softwareFolders.innerHTML = folderHtml || '<p>No folders yet. Upload some files!</p>';
 
-    // Admin flat list (unchanged)
-    const adminItems = items.map(item => `
+    // User flat list (for editing view)
+    const userItems = items.map(item => `
       <div class="software-admin-item">
         <strong>[${item.folder}] ${item.title}</strong>
         <button class="btn btn-danger" onclick="deleteSoftware('${item.id}')">Delete</button>
       </div>
     `).join('');
-    adminSoftwareList.innerHTML = adminItems;
+    userSoftwareList.innerHTML = userItems;
 
   } catch (err) {
     console.error('Load error:', err);
@@ -347,7 +385,7 @@ window.toggleFolder = (folderName) => {
   folder.classList.toggle('open');
 };
 
-// Delete (unchanged)
+// Delete (now for any user)
 window.deleteSoftware = async (id) => {
   if (!confirm('Delete this?')) return;
   try {
