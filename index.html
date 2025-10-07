@@ -29,9 +29,12 @@ input[type=email], input[type=password], input[type=text] { width:100%; padding:
 .software-list-admin { margin-top:20px; }
 .software-admin-item { border:1px solid #ddd; padding:10px; margin-bottom:10px; border-radius:5px; display:flex; align-items:center; justify-content:space-between; }
 
-/* Folder upload */
-#dropArea { border:2px dashed #0070f3; padding:30px; text-align:center; border-radius:10px; margin-bottom:20px; background:#fff; }
+/* Drag & Drop */
+#dropArea { border:2px dashed #0070f3; padding:30px; text-align:center; border-radius:10px; margin-bottom:20px; background:#fff; cursor:pointer; }
 #dropArea.dragover { background:#e0f0ff; }
+
+/* File Preview */
+#filePreview div { margin-bottom:5px; }
 
 /* Public software cards */
 .wrap { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:20px; padding:10px; }
@@ -71,19 +74,26 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
 <!-- Admin Dashboard -->
 <div id="dashboard">
   <h2>Admin Dashboard</h2>
-  
+
   <!-- Folder Name Input -->
   <div class="form-group">
     <label for="folderName">Folder Name:</label>
     <input type="text" id="folderName" placeholder="Enter folder name">
   </div>
 
-  <!-- Drag & Drop Upload -->
+  <!-- Drag & Drop + File Preview -->
   <div id="dropArea">
     <p>Drag & drop files here or click to select</p>
     <input type="file" id="fileInput" multiple style="display:none">
   </div>
-  
+  <div id="filePreview"></div>
+
+  <!-- Buttons -->
+  <div style="margin-top:10px;">
+    <button id="cancelFiles" class="btn btn-danger">Cancel</button>
+    <button id="uploadFiles" class="btn btn-success">Create</button>
+  </div>
+
   <div class="software-list-admin" id="adminSoftwareList"></div>
 </div>
 
@@ -134,12 +144,16 @@ const folderInput = document.getElementById('folderName');
 const adminSoftwareList = document.getElementById('adminSoftwareList');
 const softwareList = document.getElementById('softwareList');
 const searchBox = document.getElementById('searchBox');
+const filePreview = document.getElementById('filePreview');
+const cancelFiles = document.getElementById('cancelFiles');
+const uploadFiles = document.getElementById('uploadFiles');
 
-// Login modal
+let selectedFiles = [];
+
+// Admin login modal
 adminLoginBtn.addEventListener('click', ()=>loginModal.style.display='block');
 loginClose.addEventListener('click', ()=>loginModal.style.display='none');
-window.addEventListener('click', (e)=> { if(e.target===loginModal) loginModal.style.display='none'; });
-
+window.addEventListener('click', e=>{ if(e.target===loginModal) loginModal.style.display='none'; });
 loginSubmit.addEventListener('click', async ()=>{
   const email = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;
@@ -147,11 +161,10 @@ loginSubmit.addEventListener('click', async ()=>{
     await signInWithEmailAndPassword(auth,email,password);
     loginError.style.display='none';
     loginModal.style.display='none';
-  } catch(err){
+  }catch(err){
     loginError.style.display='block';
   }
 });
-
 logoutBtn.addEventListener('click', ()=>signOut(auth));
 
 onAuthStateChanged(auth,user=>{
@@ -167,36 +180,61 @@ onAuthStateChanged(auth,user=>{
   }
 });
 
-// Drag & Drop Upload
+// Drag & Drop
 dropArea.addEventListener('click', ()=>fileInput.click());
-fileInput.addEventListener('change', ()=>handleFiles(fileInput.files));
+fileInput.addEventListener('change', ()=>addFiles(fileInput.files));
 dropArea.addEventListener('dragover', e=>{ e.preventDefault(); dropArea.classList.add('dragover'); });
 dropArea.addEventListener('dragleave', e=>{ e.preventDefault(); dropArea.classList.remove('dragover'); });
 dropArea.addEventListener('drop', e=>{
   e.preventDefault();
   dropArea.classList.remove('dragover');
-  handleFiles(e.dataTransfer.files);
+  addFiles(e.dataTransfer.files);
 });
 
-async function handleFiles(files){
+function addFiles(files){
+  for(const file of files){ selectedFiles.push(file); }
+  renderPreview();
+}
+
+function renderPreview(){
+  filePreview.innerHTML='';
+  selectedFiles.forEach(file=>{
+    const div = document.createElement('div');
+    div.textContent = file.name;
+    filePreview.appendChild(div);
+  });
+}
+
+cancelFiles.addEventListener('click', ()=>{
+  selectedFiles=[];
+  renderPreview();
+});
+
+uploadFiles.addEventListener('click', async ()=>{
   const folder = folderInput.value.trim();
-  if(!folder){ alert('Please enter a folder name'); return; }
-  for(const file of files){
+  if(!folder){ alert('Enter folder name'); return; }
+  if(selectedFiles.length===0){ alert('No files selected'); return; }
+
+  for(const file of selectedFiles){
     const storageRef = ref(storage, `software/${folder}/${file.name}`);
     await uploadBytes(storageRef,file);
     const url = await getDownloadURL(storageRef);
-    await addDoc(collection(db,'software'), { 
-      title: file.name, 
-      folder: folder,
-      downloadUrl: url, 
-      checksum: 'Uploaded file', 
-      imageUrl:'https://via.placeholder.com/64' 
+    await addDoc(collection(db,'software'), {
+      title:file.name,
+      folder:folder,
+      downloadUrl:url,
+      checksum:'Uploaded file',
+      imageUrl:'https://via.placeholder.com/64'
     });
   }
-  loadSoftware();
-}
 
-// Load software
+  selectedFiles=[];
+  renderPreview();
+  folderInput.value='';
+  loadSoftware();
+});
+
+// Load software (public + admin list)
 async function loadSoftware(){
   const snapshot = await getDocs(collection(db,'software'));
   softwareList.innerHTML='';
@@ -204,7 +242,7 @@ async function loadSoftware(){
   snapshot.forEach(docSnap=>{
     const data = docSnap.data();
     const id = docSnap.id;
-    // Public view grouped by folder
+    // Public view
     softwareList.innerHTML+=`
       <div class="software">
         <img src="${data.imageUrl}" alt="${data.title}">
@@ -226,8 +264,8 @@ async function loadSoftware(){
 // Delete software
 window.deleteSoftware = async (id)=>{
   const docRef = doc(db,'software',id);
-  const docSnap = await doc(db,'software',id);
-  const data = (await docSnap.get()).data();
+  const docSnap = await getDocs(docRef);
+  const data = (await doc(db,'software',id)).data();
   const fileRef = ref(storage, `software/${data.folder}/${data.title}`);
   await deleteObject(fileRef);
   await deleteDoc(docRef);
@@ -243,6 +281,5 @@ searchBox.addEventListener('input', ()=>{
   });
 });
 </script>
-
 </body>
 </html>
