@@ -83,7 +83,7 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
 
   <!-- Drag & Drop + File Preview -->
   <div id="dropArea">
-    <p>Drag & drop files here or click to select</p>
+    <p>Drag & drop files here or click to select (any file type allowed)</p>
     <input type="file" id="fileInput" multiple style="display:none">
   </div>
   <div id="filePreview"></div>
@@ -111,7 +111,7 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-storage.js";
 
 const firebaseConfig = {
@@ -192,7 +192,9 @@ dropArea.addEventListener('drop', e=>{
 });
 
 function addFiles(files){
-  for(const file of files){ selectedFiles.push(file); }
+  for(const file of files){
+    selectedFiles.push(file);
+  }
   renderPreview();
 }
 
@@ -216,6 +218,8 @@ uploadFiles.addEventListener('click', async ()=>{
   if(selectedFiles.length===0){ alert('No files selected'); return; }
 
   for(const file of selectedFiles){
+    // Simple checksum placeholder (use crypto.subtle.digest for real SHA-256)
+    const checksum = `Size: ${file.size} bytes (SHA-256 pending)`;
     const storageRef = ref(storage, `software/${folder}/${file.name}`);
     await uploadBytes(storageRef,file);
     const url = await getDownloadURL(storageRef);
@@ -223,7 +227,7 @@ uploadFiles.addEventListener('click', async ()=>{
       title:file.name,
       folder:folder,
       downloadUrl:url,
-      checksum:'Uploaded file',
+      checksum:checksum,
       imageUrl:'https://via.placeholder.com/64'
     });
   }
@@ -232,44 +236,57 @@ uploadFiles.addEventListener('click', async ()=>{
   renderPreview();
   folderInput.value='';
   loadSoftware();
+  alert('Upload complete!');
 });
 
-// Load software (public + admin list)
+// Load software (public + admin list) - Optimized HTML building
 async function loadSoftware(){
   const snapshot = await getDocs(collection(db,'software'));
-  softwareList.innerHTML='';
-  adminSoftwareList.innerHTML='';
+  const publicCards = [];
+  const adminItems = [];
   snapshot.forEach(docSnap=>{
     const data = docSnap.data();
     const id = docSnap.id;
     // Public view
-    softwareList.innerHTML+=`
+    publicCards.push(`
       <div class="software">
         <img src="${data.imageUrl}" alt="${data.title}">
         <h2>[${data.folder}] ${data.title}</h2>
         <a class="download-btn" href="${data.downloadUrl}" download>Download</a>
         <p class="checksum">${data.checksum}</p>
       </div>
-    `;
+    `);
     // Admin list
-    adminSoftwareList.innerHTML+=`
+    adminItems.push(`
       <div class="software-admin-item">
         <strong>[${data.folder}] ${data.title}</strong>
         <button class="btn btn-danger" onclick="deleteSoftware('${id}')">Delete</button>
       </div>
-    `;
+    `);
   });
+  softwareList.innerHTML = publicCards.join('');
+  adminSoftwareList.innerHTML = adminItems.join('');
 }
 
-// Delete software
+// Delete software (Fixed)
 window.deleteSoftware = async (id)=>{
-  const docRef = doc(db,'software',id);
-  const docSnap = await getDocs(docRef);
-  const data = (await doc(db,'software',id)).data();
-  const fileRef = ref(storage, `software/${data.folder}/${data.title}`);
-  await deleteObject(fileRef);
-  await deleteDoc(docRef);
-  loadSoftware();
+  if (!confirm('Delete this software?')) return;
+  const docRef = doc(db, 'software', id);
+  try {
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      const fileRef = ref(storage, `software/${data.folder}/${data.title}`);
+      await deleteObject(fileRef);
+      await deleteDoc(docRef);
+      loadSoftware();
+      alert('Deleted successfully!');
+    } else {
+      alert('Document not found.');
+    }
+  } catch (error) {
+    alert('Error deleting: ' + error.message);
+  }
 };
 
 // Search
