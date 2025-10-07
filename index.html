@@ -16,40 +16,26 @@ button { padding:10px 15px; margin:5px; border:none; border-radius:5px; cursor:p
 .btn-danger { background:#dc3545; color:white; }
 button:disabled { background:#ccc; cursor:not-allowed; }
 
-/* Select */
-select { padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ccc; }
+/* Select & Input */
+select, input[type=text], input[type=email], input[type=password] { padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ccc; width:calc(100% - 24px); }
 
 /* Modals */
 .modal { display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); }
 .modal-content { background:#fff; margin:15% auto; padding:20px; border-radius:10px; max-width:400px; text-align:center; position:relative; }
 .close { position:absolute; top:10px; right:15px; font-size:28px; cursor:pointer; }
-input[type=email], input[type=password], input[type=text] { width:90%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ccc; }
 
-/* Progress */
-#uploadProgress { margin-top:10px; display:none; color:#0070f3; }
+/* Popup message */
+#popupMessage { display:none; position:fixed; top:20px; right:20px; background:#0070f3; color:white; padding:15px 20px; border-radius:8px; z-index:20000; box-shadow:0 2px 5px rgba(0,0,0,0.3); font-weight:bold; }
 
 /* Folder cards */
-.folder-card {
-  display:inline-block;
-  width:120px;
-  height:120px;
-  margin:10px;
-  background:#fff;
-  border:1px solid #ddd;
-  border-radius:10px;
-  text-align:center;
-  vertical-align:top;
-  cursor:pointer;
-  box-shadow:0 2px 5px rgba(0,0,0,0.1);
-  transition: transform 0.2s ease;
-}
+.folder-card { display:inline-block; width:120px; height:120px; margin:10px; background:#fff; border:1px solid #ddd; border-radius:10px; text-align:center; vertical-align:top; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,0.1); transition: transform 0.2s ease; }
 .folder-card:hover { transform:scale(1.05); }
 .folder-card img { width:60px; height:60px; margin-top:10px; }
 .folder-card span { display:block; margin-top:5px; font-size:0.9em; color:#0070f3; }
 
 /* Folder modal */
 .folder-modal { display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); overflow:auto; }
-.folder-modal-content { background:#fff; margin:50px auto; padding:20px; border-radius:10px; max-width:800px; }
+.folder-modal-content { background:#fff; margin:50px auto; padding:20px; border-radius:10px; max-width:900px; }
 .folder-modal-header { display:flex; justify-content:space-between; align-items:center; }
 .folder-modal-header h2 { margin:0; }
 .folder-modal-close { cursor:pointer; font-size:24px; }
@@ -57,6 +43,7 @@ input[type=email], input[type=password], input[type=text] { width:90%; padding:1
 .file-item { width:100px; display:flex; flex-direction:column; align-items:center; }
 .file-item img { width:80px; height:80px; object-fit:cover; border-radius:6px; }
 .file-item span { font-size:0.75em; text-align:center; margin-top:5px; }
+.file-item input[type=checkbox] { margin-top:5px; }
 .file-item a { font-size:0.7em; margin-top:3px; text-decoration:none; color:#0070f3; }
 
 /* Drag & Drop */
@@ -64,8 +51,8 @@ input[type=email], input[type=password], input[type=text] { width:90%; padding:1
 #dropArea.dragover { background:#e0f0ff; }
 
 /* File preview */
-#filePreview div { margin-bottom:5px; }
-#filePreview img { width:60px; height:60px; object-fit:cover; margin-right:5px; border-radius:5px; vertical-align:middle; }
+#filePreview div { margin-bottom:5px; display:flex; align-items:center; }
+#filePreview img { width:60px; height:60px; object-fit:cover; margin-right:5px; border-radius:5px; }
 
 /* Footer */
 footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
@@ -75,12 +62,12 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
 
 <h1>Cloud Folder</h1>
 
-<!-- Login -->
 <div style="text-align:center; margin-bottom:20px;">
   <button class="btn btn-primary" id="userLoginBtn">Login to Upload</button>
   <button class="btn btn-danger" id="logoutBtn" style="display:none;">Logout</button>
 </div>
 
+<!-- Login Modal -->
 <div id="loginModal" class="modal">
   <div class="modal-content">
     <span class="close" id="loginClose">&times;</span>
@@ -92,36 +79,34 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
   </div>
 </div>
 
+<!-- Popup message -->
+<div id="popupMessage"></div>
+
+<!-- Dashboard -->
 <div id="dashboard" style="display:none;">
   <h2>Upload Files</h2>
-
-  <!-- Folder Selection -->
   <div>
     <label>Select or Add Folder:</label>
     <select id="folderSelect">
       <option value="">-- Add New Folder --</option>
     </select>
-    <input type="text" id="newFolderName" placeholder="New folder name" style="display:none; margin-top:5px;">
+    <input type="text" id="newFolderName" placeholder="New folder name" style="display:block; margin-top:5px;">
+    <button class="btn btn-danger" id="deleteFolderBtn" style="display:none;">Delete Folder</button>
   </div>
-
-  <!-- Drag & Drop -->
   <div id="dropArea">
     <p>Drag & drop files here or click to select</p>
     <input type="file" id="fileInput" multiple style="display:none">
   </div>
   <div id="filePreview"></div>
-
   <div id="uploadProgress"></div>
   <button id="cancelFiles" class="btn btn-danger">Cancel</button>
   <button id="uploadFiles" class="btn btn-success">Upload</button>
 </div>
 
-<!-- Search -->
 <div style="text-align:center; margin-bottom:20px;">
   <input type="text" id="searchBox" placeholder="Search folders or files...">
 </div>
 
-<!-- Folders displayed as cards -->
 <div id="softwareFolders"></div>
 
 <!-- Folder modal -->
@@ -131,6 +116,7 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
       <h2 id="modalFolderName">Folder</h2>
       <span class="folder-modal-close" id="folderModalClose">&times;</span>
     </div>
+    <button class="btn btn-danger" id="deleteFilesBtn">Delete Selected Files</button>
     <div class="folder-files" id="modalFolderFiles"></div>
   </div>
 </div>
@@ -144,6 +130,7 @@ const supabaseUrl = 'https://hqwbffwvxgzqjkrygryr.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxd2JmZnd2eGd6cWprcnlncnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MjMwMDEsImV4cCI6MjA3NTM5OTAwMX0.mQ9vxp76KYcP10kQBD33sXOy56apQJDolbyv0CMPN3c';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Elements
 const userLoginBtn = document.getElementById('userLoginBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 const loginModal = document.getElementById('loginModal');
@@ -155,6 +142,7 @@ const dropArea = document.getElementById('dropArea');
 const fileInput = document.getElementById('fileInput');
 const folderSelect = document.getElementById('folderSelect');
 const newFolderName = document.getElementById('newFolderName');
+const deleteFolderBtn = document.getElementById('deleteFolderBtn');
 const filePreview = document.getElementById('filePreview');
 const uploadFilesBtn = document.getElementById('uploadFiles');
 const cancelFilesBtn = document.getElementById('cancelFiles');
@@ -166,12 +154,23 @@ const folderModal = document.getElementById('folderModal');
 const folderModalClose = document.getElementById('folderModalClose');
 const modalFolderName = document.getElementById('modalFolderName');
 const modalFolderFiles = document.getElementById('modalFolderFiles');
+const deleteFilesBtn = document.getElementById('deleteFilesBtn');
+const popupMessage = document.getElementById('popupMessage');
 
 let selectedFiles = [];
 let allItems = [];
 const imageExtensions = ['.jpg','.jpeg','.png','.gif','.bmp','.webp','.svg'];
+let currentFolder = '';
 
-// Login
+// ---------------- POPUP ----------------
+function showPopup(msg, color='#0070f3'){
+  popupMessage.textContent = msg;
+  popupMessage.style.background=color;
+  popupMessage.style.display='block';
+  setTimeout(()=>{ popupMessage.style.display='none'; },2000);
+}
+
+// ---------------- LOGIN ----------------
 userLoginBtn.addEventListener('click', ()=>loginModal.style.display='block');
 loginClose.addEventListener('click', ()=>loginModal.style.display='none');
 window.addEventListener('click', e=>{if(e.target===loginModal) loginModal.style.display='none';});
@@ -183,6 +182,7 @@ loginSubmit.addEventListener('click', async ()=>{
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if(error) throw error;
     loginModal.style.display='none';
+    showPopup('Login Successful', '#28a745');
   } catch(err){
     loginError.style.display='block';
   }
@@ -190,9 +190,10 @@ loginSubmit.addEventListener('click', async ()=>{
 
 logoutBtn.addEventListener('click', async ()=>{
   await supabase.auth.signOut();
+  showPopup('Logged Out', '#dc3545');
 });
 
-// Auth state
+// ---------------- AUTH STATE ----------------
 supabase.auth.onAuthStateChange((event, session)=>{
   if(session){
     dashboard.style.display='block';
@@ -206,143 +207,192 @@ supabase.auth.onAuthStateChange((event, session)=>{
   }
 });
 
-// Folder select
+// ---------------- FOLDER SELECTION ----------------
 folderSelect.addEventListener('change', e=>{
-  if(e.target.value==='') newFolderName.style.display='block';
-  else { newFolderName.style.display='none'; newFolderName.value=''; }
+  const val = e.target.value;
+  if(val===''){
+    newFolderName.style.display='block';
+    deleteFolderBtn.style.display='none';
+  } else {
+    newFolderName.style.display='block';
+    deleteFolderBtn.style.display='inline-block';
+  }
 });
 
-// Drag & drop
+// ---------------- DRAG & DROP ----------------
 dropArea.addEventListener('click', ()=>fileInput.click());
 fileInput.addEventListener('change', e=>addFiles(e.target.files));
-dropArea.addEventListener('dragover', e=>{ e.preventDefault(); dropArea.classList.add('dragover'); });
-dropArea.addEventListener('dragleave', e=>{ e.preventDefault(); dropArea.classList.remove('dragover'); });
-dropArea.addEventListener('drop', e=>{ e.preventDefault(); dropArea.classList.remove('dragover'); addFiles(e.dataTransfer.files); });
+dropArea.addEventListener('dragover', e=>{e.preventDefault(); dropArea.classList.add('dragover');});
+dropArea.addEventListener('dragleave', e=>{e.preventDefault(); dropArea.classList.remove('dragover');});
+dropArea.addEventListener('drop', e=>{e.preventDefault(); dropArea.classList.remove('dragover'); addFiles(e.dataTransfer.files);});
 
 function addFiles(files){
-  for(const file of files){
-    if(selectedFiles.find(f=>f.name===file.name && f.size===file.size)) continue;
-    selectedFiles.push(file);
+  for(const f of files){
+    if(selectedFiles.find(sf=>sf.name===f.name && sf.size===f.size)) continue;
+    selectedFiles.push(f);
   }
-  renderPreview();
+  renderFilePreview();
 }
 
-function renderPreview(){
+function renderFilePreview(){
   filePreview.innerHTML='';
-  selectedFiles.forEach(file=>{
+  selectedFiles.forEach(f=>{
     const div = document.createElement('div');
-    const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
-    if(imageExtensions.includes(ext)){
+    let ext = f.name.slice(f.name.lastIndexOf('.')).toLowerCase();
+    let isImg = imageExtensions.includes(ext);
+    if(isImg){
       const img = document.createElement('img');
-      img.src = URL.createObjectURL(file);
+      img.src = URL.createObjectURL(f);
       div.appendChild(img);
     }
-    const text = document.createElement('span');
-    text.textContent = file.name;
-    div.appendChild(text);
+    const span = document.createElement('span');
+    span.textContent = `${f.name} (${(f.size/1024).toFixed(1)} KB)`;
+    div.appendChild(span);
     filePreview.appendChild(div);
   });
 }
 
 cancelFilesBtn.addEventListener('click', ()=>{
   selectedFiles=[];
-  renderPreview();
+  renderFilePreview();
   uploadProgress.style.display='none';
 });
 
-// Upload files
+// ---------------- UPLOAD ----------------
 uploadFilesBtn.addEventListener('click', async ()=>{
   let folder = folderSelect.value || newFolderName.value.trim();
-  if(!folder){ alert('Select or enter a folder'); return; }
-  if(selectedFiles.length===0){ alert('No files selected'); return; }
+  if(!folder){ showPopup('Enter folder name', '#dc3545'); return; }
+  if(selectedFiles.length===0){ showPopup('No files selected', '#dc3545'); return; }
 
   const safeFolder = folder.replace(/[^a-zA-Z0-9_-]/g,'_');
   uploadFilesBtn.disabled=true;
   uploadFilesBtn.textContent='Uploading...';
   uploadProgress.style.display='block';
-  uploadProgress.textContent='';
 
-  let successCount=0, errorCount=0;
+  let successCount=0;
 
   for(let i=0;i<selectedFiles.length;i++){
     const file = selectedFiles[i];
-    uploadProgress.textContent=`Uploading ${i+1}/${selectedFiles.length}: ${file.name}`;
-
-    try{
-      const { error:uploadError } = await supabase.storage.from('cloud').upload(`${safeFolder}/${file.name}`, file, { upsert:true });
+    uploadProgress.textContent=`Uploading ${i+1} of ${selectedFiles.length}: ${file.name}`;
+    const filePath = `${safeFolder}/${file.name}`;
+    try {
+      const { error: uploadError } = await supabase.storage.from('cloud').upload(filePath,file,{upsert:true});
       if(uploadError) throw uploadError;
-
-      const { data:{ publicUrl } } = supabase.storage.from('cloud').getPublicUrl(`${safeFolder}/${file.name}`);
-
-      const { error:dbError } = await supabase.from('software').insert({
-        title:file.name,
-        folder:safeFolder,
-        download_url:publicUrl,
-        checksum:`Size: ${file.size} bytes`,
-        image_url: publicUrl
-      });
+      const { data: { publicUrl } } = supabase.storage.from('cloud').getPublicUrl(filePath);
+      const { error: dbError } = await supabase.from('software').insert({title:file.name, folder:safeFolder, download_url:publicUrl, checksum:`Size: ${file.size} bytes`, image_url: publicUrl});
       if(dbError) throw dbError;
       successCount++;
     } catch(err){
       console.error(err);
-      errorCount++;
     }
   }
 
-  alert(`Upload done: ${successCount} success, ${errorCount} failed`);
+  showPopup(`Uploaded ${successCount} files to ${safeFolder}`, '#28a745');
   selectedFiles=[];
-  renderPreview();
-  folderSelect.value='';
+  renderFilePreview();
   newFolderName.value='';
-  newFolderName.style.display='none';
+  folderSelect.value='';
   uploadFilesBtn.disabled=false;
   uploadFilesBtn.textContent='Upload';
-  uploadProgress.style.display='none';
   loadFolderCards();
 });
 
-// Load folders as cards
+// ---------------- LOAD FOLDERS ----------------
 async function loadFolderCards(){
-  const { data: items } = await supabase.from('software').select('*').order('uploaded_at',{ascending:false});
-  allItems = items;
-  const folders = {};
-  items.forEach(item=>{ if(!folders[item.folder]) folders[item.folder]=[]; folders[item.folder].push(item); });
+  try{
+    const { data: items, error } = await supabase.from('software').select('*').order('uploaded_at',{ascending:false});
+    if(error) throw error;
+    allItems = items;
 
-  folderSelect.innerHTML='<option value="">-- Add New Folder --</option>'+Object.keys(folders).map(f=>`<option value="${f}">${f}</option>`).join('');
+    const folders = [...new Set(items.map(i=>i.folder))].sort();
+    folderSelect.innerHTML='<option value="">-- Add New Folder --</option>'+folders.map(f=>`<option value="${f}">${f}</option>`).join('');
 
-  softwareFolders.innerHTML=Object.entries(folders).map(([name, files])=>`
-    <div class="folder-card" onclick="openFolder('${name}')">
-      <img src="https://cdn-icons-png.flaticon.com/512/715/715676.png">
-      <span>${name} (${files.length})</span>
-    </div>
-  `).join('');
+    // Folder cards
+    const html = folders.map(f=>{
+      const folderFiles = items.filter(i=>i.folder===f);
+      const firstImg = folderFiles.find(fi=>imageExtensions.includes(fi.title.slice(fi.title.lastIndexOf('.')).toLowerCase()));
+      const thumb = firstImg ? firstImg.image_url : 'https://via.placeholder.com/60?text=📁';
+      return `<div class="folder-card" data-folder="${f}" onclick="openFolderModal('${f}')">
+        <img src="${thumb}" alt="${f}"><span>${f} (${folderFiles.length})</span>
+      </div>`;
+    }).join('');
+    softwareFolders.innerHTML = html || '<p>No folders yet.</p>';
+  }catch(err){
+    console.error(err);
+  }
 }
 
-// Open folder modal
-folderModalClose.addEventListener('click', ()=>folderModal.style.display='none');
-window.openFolder=(folderName)=>{
+// ---------------- OPEN FOLDER MODAL ----------------
+window.openFolderModal = (folderName)=>{
+  currentFolder = folderName;
   modalFolderName.textContent=folderName;
   const files = allItems.filter(f=>f.folder===folderName);
-  modalFolderFiles.innerHTML=files.map(file=>{
-    const ext = file.title.slice(file.title.lastIndexOf('.')).toLowerCase();
-    const isImage = imageExtensions.includes(ext);
-    return `
-      <div class="file-item">
-        <img src="${isImage?file.image_url:'https://via.placeholder.com/80?text=📄'}">
-        <span>${file.title}</span>
-        <a href="${file.download_url}" download>Download</a>
-      </div>
-    `;
-  }).join('');
+  modalFolderFiles.innerHTML='';
+  files.forEach(f=>{
+    const div = document.createElement('div');
+    div.className='file-item';
+    let ext = f.title.slice(f.title.lastIndexOf('.')).toLowerCase();
+    let isImg = imageExtensions.includes(ext);
+    if(isImg){
+      const img = document.createElement('img'); img.src=f.image_url; div.appendChild(img);
+    } else {
+      const img = document.createElement('img'); img.src='https://via.placeholder.com/80?text=📄'; div.appendChild(img);
+    }
+    const span = document.createElement('span'); span.textContent=f.title; div.appendChild(span);
+    const chk = document.createElement('input'); chk.type='checkbox'; chk.dataset.id=f.id; div.appendChild(chk);
+    const a = document.createElement('a'); a.href=f.download_url; a.download=''; a.textContent='Download'; div.appendChild(a);
+    modalFolderFiles.appendChild(div);
+  });
   folderModal.style.display='block';
-}
+};
 
-// Search folders
+folderModalClose.addEventListener('click', ()=>folderModal.style.display='none');
+window.addEventListener('click', e=>{if(e.target===folderModal) folderModal.style.display='none';});
+
+// ---------------- DELETE FILES ----------------
+deleteFilesBtn.addEventListener('click', async ()=>{
+  const checkboxes = modalFolderFiles.querySelectorAll('input[type=checkbox]:checked');
+  if(checkboxes.length===0){ showPopup('No files selected', '#dc3545'); return; }
+  if(!confirm('Delete selected files?')) return;
+
+  for(const cb of checkboxes){
+    const id = cb.dataset.id;
+    const item = allItems.find(f=>f.id===id);
+    if(item){
+      await supabase.storage.from('cloud').remove([`${item.folder}/${item.title}`]);
+      await supabase.from('software').delete().eq('id',id);
+    }
+  }
+  showPopup('Selected files deleted', '#28a745');
+  folderModal.style.display='none';
+  loadFolderCards();
+});
+
+// ---------------- DELETE FOLDER ----------------
+deleteFolderBtn.addEventListener('click', async ()=>{
+  if(!folderSelect.value) return;
+  if(!confirm('Delete this folder and all files?')) return;
+  const folder = folderSelect.value;
+  const files = allItems.filter(f=>f.folder===folder);
+  for(const f of files){
+    await supabase.storage.from('cloud').remove([`${f.folder}/${f.title}`]);
+    await supabase.from('software').delete().eq('id',f.id);
+  }
+  showPopup('Folder deleted', '#28a745');
+  loadFolderCards();
+  folderSelect.value='';
+  newFolderName.value='';
+  deleteFolderBtn.style.display='none';
+});
+
+// ---------------- SEARCH ----------------
 searchBox.addEventListener('input', ()=>{
   const term = searchBox.value.toLowerCase();
   document.querySelectorAll('.folder-card').forEach(card=>{
-    const text = card.querySelector('span').textContent.toLowerCase();
-    card.style.display = text.includes(term)?'inline-block':'none';
+    const folderName = card.querySelector('span').textContent.toLowerCase();
+    const files = allItems.filter(f=>f.folder===folderName).map(f=>f.title.toLowerCase());
+    const matches = folderName.includes(term) || files.some(fn=>fn.includes(term));
+    card.style.display = matches ? 'inline-block' : 'none';
   });
 });
 </script>
