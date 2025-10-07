@@ -31,7 +31,7 @@ input[type=text], input[type=email], input[type=password], select { padding:10px
 .folder-container { display:flex; flex-wrap:wrap; gap:15px; justify-content:center; }
 .folder-card { width:120px; height:140px; background:#fff; border:1px solid #ddd; border-radius:10px; text-align:center; cursor:pointer; position:relative; box-shadow:0 2px 5px rgba(0,0,0,0.1); transition: transform 0.2s ease;}
 .folder-card:hover { transform:scale(1.05); }
-.folder-card img { width:60px; height:60px; margin-top:10px; }
+.folder-card img { width:60px; height:60px; margin-top:10px; object-fit:cover; border-radius:5px; }
 .folder-card span { display:block; margin-top:5px; font-size:0.9em; color:#0070f3; }
 .delete-folder-btn { position:absolute; top:5px; right:5px; background:#dc3545; color:white; font-size:0.8em; padding:2px 5px; border-radius:4px; cursor:pointer; }
 
@@ -44,7 +44,7 @@ input[type=text], input[type=email], input[type=password], select { padding:10px
 .folder-files { display:flex; flex-wrap:wrap; gap:10px; margin-top:15px; }
 .file-item { width:100px; display:flex; flex-direction:column; align-items:center; }
 .file-item img { width:80px; height:80px; object-fit:cover; border-radius:6px; }
-.file-item span { font-size:0.75em; text-align:center; margin-top:5px; }
+.file-item span { font-size:0.75em; text-align:center; margin-top:5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%; }
 .file-item input[type=checkbox] { margin-top:5px; }
 .file-item a { font-size:0.7em; margin-top:3px; text-decoration:none; color:#0070f3; }
 
@@ -53,12 +53,14 @@ input[type=text], input[type=email], input[type=password], select { padding:10px
 #dropArea.dragover { background:#e0f0ff; }
 
 /* File preview */
-#filePreview div { margin-bottom:5px; display:flex; align-items:center; }
-#filePreview img { width:60px; height:60px; object-fit:cover; margin-right:5px; border-radius:5px; }
+#filePreview { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; }
+#filePreview .preview-item { width:100px; text-align:center; }
+#filePreview .preview-item img { width:80px; height:80px; object-fit:cover; border-radius:5px; }
+.progress-bar { width:100%; background:#f0f0f0; border-radius:5px; margin-top:3px; height:6px; overflow:hidden; }
+.progress-fill { width:0%; height:100%; background:#28a745; transition:width 0.2s; border-radius:5px; }
 
 /* Footer */
 footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
-
 </style>
 </head>
 <body>
@@ -100,7 +102,6 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
     <input type="file" id="fileInput" multiple style="display:none">
   </div>
   <div id="filePreview"></div>
-  <div id="uploadProgress"></div>
   <button id="cancelFiles" class="btn btn-danger">Cancel</button>
   <button id="uploadFiles" class="btn btn-success">Upload</button>
 </div>
@@ -127,10 +128,11 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
 
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-const supabaseUrl = 'https://hqwbffwvxgzqjkrygryr.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxd2JmZnd2eGd6cWprcnlncnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MjMwMDEsImV4cCI6MjA3NTM5OTAwMX0.mQ9vxp76KYcP10kQBD33sXOy56apQJDolbyv0CMPN3c';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseUrl='https://hqwbffwvxgzqjkrygryr.supabase.co';
+const supabaseKey='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxd2JmZnd2eGd6cWprcnlncnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MjMwMDEsImV4cCI6MjA3NTM5OTAwMX0.mQ9vxp76KYcP10kQBD33sXOy56apQJDolbyv0CMPN3c';
+const supabase=createClient(supabaseUrl,supabaseKey);
 
+// Elements
 const userLoginBtn=document.getElementById('userLoginBtn');
 const logoutBtn=document.getElementById('logoutBtn');
 const loginModal=document.getElementById('loginModal');
@@ -145,7 +147,6 @@ const newFolderName=document.getElementById('newFolderName');
 const filePreview=document.getElementById('filePreview');
 const uploadFilesBtn=document.getElementById('uploadFiles');
 const cancelFilesBtn=document.getElementById('cancelFiles');
-const uploadProgress=document.getElementById('uploadProgress');
 const softwareFolders=document.getElementById('softwareFolders');
 const searchBox=document.getElementById('searchBox');
 const folderModal=document.getElementById('folderModal');
@@ -172,6 +173,7 @@ function showPopup(msg,color='#0070f3'){
 userLoginBtn.addEventListener('click',()=>loginModal.style.display='block');
 loginClose.addEventListener('click',()=>loginModal.style.display='none');
 window.addEventListener('click',e=>{if(e.target===loginModal) loginModal.style.display='none';});
+
 loginSubmit.addEventListener('click',async()=>{
   const email=document.getElementById('loginEmail').value;
   const password=document.getElementById('loginPassword').value;
@@ -180,130 +182,159 @@ loginSubmit.addEventListener('click',async()=>{
     if(error) throw error;
   }catch(err){ loginError.style.display='block'; return; }
 });
+
+// Force logout and prevent auto-login
+logoutBtn.addEventListener('click',async()=>{
+  await supabase.auth.signOut();
+  localStorage.removeItem('supabase.auth.token'); // prevent auto-login
+  dashboard.style.display='none';
+  userLoginBtn.style.display='inline-block';
+  logoutBtn.style.display='none';
+  showPopup('Logged out','#0070f3');
+});
+
+// Auth state listener
 supabase.auth.onAuthStateChange((event,session)=>{
   if(session){
     dashboard.style.display='block';
     userLoginBtn.style.display='none';
     logoutBtn.style.display='inline-block';
-    loginModal.style.display='none'; // close modal
+    loginModal.style.display='none';
     showPopup('Login successful','#28a745');
-    loadFolderCards();
-  } else {
+  }else{
     dashboard.style.display='none';
     userLoginBtn.style.display='inline-block';
     logoutBtn.style.display='none';
   }
 });
-logoutBtn.addEventListener('click',async()=>{await supabase.auth.signOut(); showPopup('Logged out','#0070f3');});
 
-// ---------------- DRAG & DROP ----------------
+// ---------------- FOLDER & FILE UPLOAD ----------------
+folderSelect.addEventListener('change',e=>{
+  if(e.target.value===''){ newFolderName.style.display='block'; } else { newFolderName.style.display='none'; }
+});
+
 dropArea.addEventListener('click',()=>fileInput.click());
-fileInput.addEventListener('change',e=>addFiles(e.target.files));
-dropArea.addEventListener('dragover',e=>{e.preventDefault();dropArea.classList.add('dragover');});
-dropArea.addEventListener('dragleave',e=>{e.preventDefault();dropArea.classList.remove('dragover');});
-dropArea.addEventListener('drop',e=>{e.preventDefault();dropArea.classList.remove('dragover'); addFiles(e.dataTransfer.files);});
+fileInput.addEventListener('change',e=>{ addFiles(e.target.files); });
+dropArea.addEventListener('dragover',e=>{ e.preventDefault(); dropArea.classList.add('dragover'); });
+dropArea.addEventListener('dragleave',e=>{ e.preventDefault(); dropArea.classList.remove('dragover'); });
+dropArea.addEventListener('drop',e=>{ e.preventDefault(); dropArea.classList.remove('dragover'); addFiles(e.dataTransfer.files); });
 
-function addFiles(files){for(const f of files){if(selectedFiles.find(sf=>sf.name===f.name && sf.size===f.size)) continue; selectedFiles.push(f);}
-renderFilePreview();}
-function renderFilePreview(){filePreview.innerHTML=''; selectedFiles.forEach(f=>{const div=document.createElement('div'); let ext=f.name.slice(f.name.lastIndexOf('.')).toLowerCase(); if(imageExtensions.includes(ext)){const img=document.createElement('img'); img.src=URL.createObjectURL(f); div.appendChild(img);} const span=document.createElement('span'); span.textContent=`${f.name} (${(f.size/1024).toFixed(1)} KB)`; div.appendChild(span); filePreview.appendChild(div);});}
-cancelFilesBtn.addEventListener('click',()=>{selectedFiles=[]; renderFilePreview(); uploadProgress.style.display='none';});
+function addFiles(files){
+  for(const file of files){ if(!selectedFiles.find(f=>f.name===file.name && f.size===file.size)) selectedFiles.push(file); }
+  renderFilePreview();
+}
+
+function renderFilePreview(){
+  filePreview.innerHTML='';
+  selectedFiles.forEach(file=>{
+    const div=document.createElement('div'); div.className='preview-item';
+    const ext=file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+    if(imageExtensions.includes(ext)){ const img=document.createElement('img'); img.src=URL.createObjectURL(file); div.appendChild(img); }
+    const span=document.createElement('span'); span.textContent=file.name; div.appendChild(span);
+    const progress=document.createElement('div'); progress.className='progress-bar'; const fill=document.createElement('div'); fill.className='progress-fill'; progress.appendChild(fill); div.appendChild(progress);
+    file.progressElement=fill;
+    filePreview.appendChild(div);
+  });
+}
+
+cancelFilesBtn.addEventListener('click',()=>{
+  selectedFiles=[]; renderFilePreview();
+});
 
 // ---------------- UPLOAD ----------------
 uploadFilesBtn.addEventListener('click',async()=>{
-  let folder=folderSelect.value || newFolderName.value.trim();
-  if(!folder){ showPopup('Enter folder name','#dc3545'); return; }
+  let folder=folderSelect.value; if(!folder){ folder=newFolderName.value.trim(); if(!folder){ showPopup('Enter folder name','#dc3545'); return; } }
   if(selectedFiles.length===0){ showPopup('No files selected','#dc3545'); return; }
   const safeFolder=folder.replace(/[^a-zA-Z0-9_-]/g,'_');
-  uploadFilesBtn.disabled=true; uploadFilesBtn.textContent='Uploading...'; uploadProgress.style.display='block';
-  let successCount=0;
+  uploadFilesBtn.disabled=true; uploadFilesBtn.textContent='Uploading...';
   for(let i=0;i<selectedFiles.length;i++){
     const file=selectedFiles[i];
-    uploadProgress.textContent=`Uploading ${i+1}/${selectedFiles.length}: ${file.name}`;
-    const filePath=`${safeFolder}/${file.name}`;
     try{
-      const {error:uploadError}=await supabase.storage.from('cloud').upload(filePath,file,{upsert:true});
-      if(uploadError) throw uploadError;
-      const {data:{publicUrl}}=supabase.storage.from('cloud').getPublicUrl(filePath);
-      const {error:dbError}=await supabase.from('software').insert({title:file.name,folder:safeFolder,download_url:publicUrl,checksum:`Size:${file.size} bytes`,image_url:publicUrl});
-      if(dbError) throw dbError;
-      successCount++;
-    }catch(err){ console.error(err); }
+      const {error}=await supabase.storage.from('cloud').upload(`${safeFolder}/${file.name}`,file,{upsert:true});
+      if(error) throw error;
+      let prog=0; const interval=setInterval(()=>{ prog+=10; file.progressElement.style.width=prog+'%'; if(prog>=100) clearInterval(interval); },50);
+      const { data:{ publicUrl } }=supabase.storage.from('cloud').getPublicUrl(`${safeFolder}/${file.name}`);
+      await supabase.from('software').insert({title:file.name,folder:safeFolder,download_url:publicUrl,checksum:`Size: ${file.size} bytes`,image_url:publicUrl});
+    }catch(e){ console.error(e); }
   }
-  showPopup(`Uploaded ${successCount} files to ${safeFolder}`,'#28a745');
+  showPopup('Upload complete','#28a745');
   selectedFiles=[]; renderFilePreview(); newFolderName.value=''; folderSelect.value=''; uploadFilesBtn.disabled=false; uploadFilesBtn.textContent='Upload';
   loadFolderCards();
 });
 
-// ---------------- LOAD FOLDER CARDS ----------------
+// ---------------- LOAD FOLDERS ----------------
 async function loadFolderCards(){
   try{
-    const {data:items,error}=await supabase.from('software').select('*').order('uploaded_at',{ascending:false});
+    const { data: items, error }=await supabase.from('software').select('*').order('uploaded_at',{ascending:false});
     if(error) throw error;
     allItems=items;
     const folders=[...new Set(items.map(i=>i.folder))].sort();
     folderSelect.innerHTML='<option value="">-- Add New Folder --</option>'+folders.map(f=>`<option value="${f}">${f}</option>`).join('');
     softwareFolders.innerHTML=folders.map(f=>{
-      const folderFiles=items.filter(i=>i.folder===f);
-      const firstImg=folderFiles.find(fi=>imageExtensions.includes(fi.title.slice(fi.title.lastIndexOf('.')).toLowerCase()));
+      const files=items.filter(i=>i.folder===f);
+      const firstImg=files.find(fi=>imageExtensions.includes(fi.title.slice(fi.title.lastIndexOf('.')).toLowerCase()));
       const thumb=firstImg ? firstImg.image_url : 'https://via.placeholder.com/60?text=📁';
-      return `<div class="folder-card" onclick="openFolderModal('${f}')">
+      return `<div class="folder-card">
         <img src="${thumb}" alt="${f}">
-        <span>${f} (${folderFiles.length})</span>
-        <button class="delete-folder-btn" onclick="deleteFolder('${f}',event)">Delete</button>
+        <span>${f} (${files.length})</span>
+        <button class="delete-folder-btn">Delete</button>
       </div>`;
     }).join('') || '<p>No folders yet.</p>';
-  }catch(err){ console.error(err); }
+
+    // Add click events
+    document.querySelectorAll('.folder-card').forEach(card=>{
+      const name=card.querySelector('span').textContent.split(' (')[0];
+      card.querySelector('img').parentElement.addEventListener('click',()=>openFolderModal(name));
+      card.querySelector('.delete-folder-btn').addEventListener('click',e=>{
+        e.stopPropagation(); deleteFolder(name);
+      });
+    });
+
+  }catch(e){ console.error(e); }
 }
 
 // ---------------- OPEN FOLDER MODAL ----------------
-window.openFolderModal=(folderName)=>{
-  currentFolder=folderName;
-  modalFolderName.textContent=folderName;
-  const files=allItems.filter(f=>f.folder===folderName);
+function openFolderModal(f){
+  currentFolder=f; modalFolderName.textContent=f;
+  const files=allItems.filter(i=>i.folder===f);
   modalFolderFiles.innerHTML='';
-  files.forEach(f=>{
+  files.forEach(file=>{
     const div=document.createElement('div'); div.className='file-item';
-    const ext=f.title.slice(f.title.lastIndexOf('.')).toLowerCase();
-    const isImg=imageExtensions.includes(ext);
-    const img=document.createElement('img'); img.src=isImg?f.image_url:'https://via.placeholder.com/80?text=📄';
+    const ext=file.title.slice(file.title.lastIndexOf('.')).toLowerCase();
+    const img=document.createElement('img'); img.src=imageExtensions.includes(ext)?file.image_url:'https://via.placeholder.com/80?text=📄';
     div.appendChild(img);
-    const span=document.createElement('span'); span.textContent=f.title; div.appendChild(span);
-    const chk=document.createElement('input'); chk.type='checkbox'; chk.dataset.id=f.id; div.appendChild(chk);
-    const a=document.createElement('a'); a.href=f.download_url; a.download=''; a.textContent='Download'; div.appendChild(a);
+    const span=document.createElement('span'); span.textContent=file.title; div.appendChild(span);
+    const chk=document.createElement('input'); chk.type='checkbox'; chk.dataset.id=file.id; div.appendChild(chk);
+    const a=document.createElement('a'); a.href=file.download_url; a.download=''; a.textContent='Download'; div.appendChild(a);
     modalFolderFiles.appendChild(div);
   });
   folderModal.style.display='block';
-};
+}
 folderModalClose.addEventListener('click',()=>folderModal.style.display='none');
-window.addEventListener('click',e=>{if(e.target===folderModal) folderModal.style.display='none';});
 
 // ---------------- DELETE FILES ----------------
 deleteFilesBtn.addEventListener('click',async()=>{
-  const checkboxes=modalFolderFiles.querySelectorAll('input[type=checkbox]:checked');
-  if(checkboxes.length===0){ showPopup('No files selected','#dc3545'); return; }
+  const checked=[...modalFolderFiles.querySelectorAll('input[type=checkbox]:checked')];
+  if(checked.length===0){ showPopup('No files selected','#dc3545'); return; }
   if(!confirm('Delete selected files?')) return;
-  for(const cb of checkboxes){
+  for(const cb of checked){
     const id=cb.dataset.id;
     const item=allItems.find(f=>f.id===id);
-    if(item){ await supabase.storage.from('cloud').remove([`${item.folder}/${item.title}`]); await supabase.from('software').delete().eq('id',id); }
+    if(item){ await supabase.storage.from('cloud').remove([`${item.folder}/${item.title}`]); await supabase.from('software').delete().eq('id',id);}
   }
-  showPopup('Selected files deleted','#28a745');
-  folderModal.style.display='none';
-  loadFolderCards();
+  showPopup('Selected files deleted','#28a745'); folderModal.style.display='none'; loadFolderCards();
 });
 
 // ---------------- DELETE FOLDER ----------------
-window.deleteFolder=async(folderName,event)=>{
-  event.stopPropagation();
-  if(!confirm('Delete this folder and all files?')) return;
-  const files=allItems.filter(f=>f.folder===folderName);
-  for(const f of files){
-    await supabase.storage.from('cloud').remove([`${f.folder}/${f.title}`]);
-    await supabase.from('software').delete().eq('id',f.id);
+async function deleteFolder(f){
+  if(!confirm('Delete folder and all files?')) return;
+  const files=allItems.filter(i=>i.folder===f);
+  for(const file of files){
+    await supabase.storage.from('cloud').remove([`${file.folder}/${file.title}`]);
+    await supabase.from('software').delete().eq('id',file.id);
   }
-  showPopup('Folder deleted','#28a745');
-  loadFolderCards();
-};
+  showPopup('Folder deleted','#28a745'); loadFolderCards();
+}
 
 // ---------------- SEARCH ----------------
 searchBox.addEventListener('input',()=>{
@@ -317,7 +348,7 @@ searchBox.addEventListener('input',()=>{
   });
 });
 
-// ---------------- INIT ----------------
+// ---------------- INITIAL ----------------
 loadFolderCards();
 
 </script>
