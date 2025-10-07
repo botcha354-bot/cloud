@@ -14,6 +14,7 @@ button { padding:10px 15px; margin:5px; border:none; border-radius:5px; cursor:p
 .btn-primary { background:#0070f3; color:white; }
 .btn-success { background:#28a745; color:white; }
 .btn-danger { background:#dc3545; color:white; }
+button:disabled { background:#ccc; cursor:not-allowed; }
 
 /* Admin Modal */
 .modal { display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); }
@@ -35,6 +36,9 @@ input[type=email], input[type=password], input[type=text] { width:100%; padding:
 
 /* File Preview */
 #filePreview div { margin-bottom:5px; }
+
+/* Progress */
+#uploadProgress { margin-top:10px; display:none; color:#0070f3; }
 
 /* Public software cards */
 .wrap { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:20px; padding:10px; }
@@ -83,10 +87,13 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
 
   <!-- Drag & Drop + File Preview -->
   <div id="dropArea">
-    <p>Drag & drop files here or click to select (any file type allowed)</p>
+    <p>Drag & drop files here or click to select</p>
     <input type="file" id="fileInput" multiple style="display:none">
   </div>
   <div id="filePreview"></div>
+
+  <!-- Progress -->
+  <div id="uploadProgress"></div>
 
   <!-- Buttons -->
   <div style="margin-top:10px;">
@@ -147,6 +154,7 @@ const searchBox = document.getElementById('searchBox');
 const filePreview = document.getElementById('filePreview');
 const cancelFiles = document.getElementById('cancelFiles');
 const uploadFiles = document.getElementById('uploadFiles');
+const uploadProgress = document.getElementById('uploadProgress');
 
 let selectedFiles = [];
 
@@ -162,10 +170,17 @@ loginSubmit.addEventListener('click', async ()=>{
     loginError.style.display='none';
     loginModal.style.display='none';
   }catch(err){
+    console.error('Login error:', err);
     loginError.style.display='block';
   }
 });
-logoutBtn.addEventListener('click', ()=>signOut(auth));
+logoutBtn.addEventListener('click', async ()=>{
+  try {
+    await signOut(auth);
+  } catch (err) {
+    console.error('Logout error:', err);
+  }
+});
 
 onAuthStateChanged(auth,user=>{
   if(user){
@@ -182,7 +197,7 @@ onAuthStateChanged(auth,user=>{
 
 // Drag & Drop
 dropArea.addEventListener('click', ()=>fileInput.click());
-fileInput.addEventListener('change', ()=>addFiles(fileInput.files));
+fileInput.addEventListener('change', (e)=>addFiles(e.target.files));
 dropArea.addEventListener('dragover', e=>{ e.preventDefault(); dropArea.classList.add('dragover'); });
 dropArea.addEventListener('dragleave', e=>{ e.preventDefault(); dropArea.classList.remove('dragover'); });
 dropArea.addEventListener('drop', e=>{
@@ -193,6 +208,10 @@ dropArea.addEventListener('drop', e=>{
 
 function addFiles(files){
   for(const file of files){
+    if (selectedFiles.find(f => f.name === file.name && f.size === file.size)) {
+      console.warn('Duplicate file skipped:', file.name);
+      continue;
+    }
     selectedFiles.push(file);
   }
   renderPreview();
@@ -202,14 +221,15 @@ function renderPreview(){
   filePreview.innerHTML='';
   selectedFiles.forEach(file=>{
     const div = document.createElement('div');
-    div.textContent = file.name;
+    div.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
     filePreview.appendChild(div);
   });
 }
 
 cancelFiles.addEventListener('click', ()=>{
-  selectedFiles=[];
+  selectedFiles = [];
   renderPreview();
+  uploadProgress.style.display = 'none';
 });
 
 uploadFiles.addEventListener('click', async ()=>{
@@ -217,58 +237,102 @@ uploadFiles.addEventListener('click', async ()=>{
   if(!folder){ alert('Enter folder name'); return; }
   if(selectedFiles.length===0){ alert('No files selected'); return; }
 
-  for(const file of selectedFiles){
-    // Simple checksum placeholder (use crypto.subtle.digest for real SHA-256)
-    const checksum = `Size: ${file.size} bytes (SHA-256 pending)`;
-    const storageRef = ref(storage, `software/${folder}/${file.name}`);
-    await uploadBytes(storageRef,file);
-    const url = await getDownloadURL(storageRef);
-    await addDoc(collection(db,'software'), {
-      title:file.name,
-      folder:folder,
-      downloadUrl:url,
-      checksum:checksum,
-      imageUrl:'https://via.placeholder.com/64'
-    });
-  }
+  // Sanitize folder name
+  const safeFolder = folder.replace(/[^a-zA-Z0-9_-]/g, '_');
 
-  selectedFiles=[];
-  renderPreview();
-  folderInput.value='';
-  loadSoftware();
-  alert('Upload complete!');
+  uploadFiles.disabled = true;
+  uploadFiles.textContent = 'Uploading...';
+  uploadProgress.style.display = 'block';
+  uploadProgress.textContent = '';
+
+  let successCount = 0;
+  let errorCount = 0;
+
+  try {
+    for(let i = 0; i < selectedFiles.length; i++){
+      const file = selectedFiles[i];
+      uploadProgress.textContent = `Uploading ${i+1} of ${selectedFiles.length}: ${file.name}...`;
+
+      console.log(`Uploading: ${file.name} to folder: ${safeFolder}`);
+
+      // Simple checksum placeholder
+      const checksum = `Size: ${file.size} bytes (SHA-256 pending)`;
+      const storageRef = ref(storage, `software/${safeFolder}/${file.name}`);
+      
+      try {
+        await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(storageRef);
+        await addDoc(collection(db, 'software'), {
+          title: file.name,
+          folder: safeFolder,
+          downloadUrl: url,
+          checksum: checksum,
+          imageUrl: 'https://via.placeholder.com/64',
+          uploadedAt: new Date().toISOString()
+        });
+        successCount++;
+        console.log(`Success: ${file.name} uploaded`);
+      } catch (fileErr) {
+        console.error(`Error uploading ${file.name}:`, fileErr);
+        errorCount++;
+      }
+    }
+
+    if (errorCount > 0) {
+      alert(`Upload partial: ${successCount} succeeded, ${errorCount} failed. Check console for details.`);
+    } else {
+      alert(`Upload complete! ${successCount} files added.`);
+    }
+
+    selectedFiles = [];
+    renderPreview();
+    folderInput.value = '';
+    loadSoftware();
+  } catch (err) {
+    console.error('Overall upload error:', err);
+    alert(`Upload failed: ${err.message}. Check Firebase setup and console.`);
+  } finally {
+    uploadFiles.disabled = false;
+    uploadFiles.textContent = 'Create';
+    uploadProgress.style.display = 'none';
+  }
 });
 
 // Load software (public + admin list) - Optimized HTML building
 async function loadSoftware(){
-  const snapshot = await getDocs(collection(db,'software'));
-  const publicCards = [];
-  const adminItems = [];
-  snapshot.forEach(docSnap=>{
-    const data = docSnap.data();
-    const id = docSnap.id;
-    // Public view
-    publicCards.push(`
-      <div class="software">
-        <img src="${data.imageUrl}" alt="${data.title}">
-        <h2>[${data.folder}] ${data.title}</h2>
-        <a class="download-btn" href="${data.downloadUrl}" download>Download</a>
-        <p class="checksum">${data.checksum}</p>
-      </div>
-    `);
-    // Admin list
-    adminItems.push(`
-      <div class="software-admin-item">
-        <strong>[${data.folder}] ${data.title}</strong>
-        <button class="btn btn-danger" onclick="deleteSoftware('${id}')">Delete</button>
-      </div>
-    `);
-  });
-  softwareList.innerHTML = publicCards.join('');
-  adminSoftwareList.innerHTML = adminItems.join('');
+  try {
+    const snapshot = await getDocs(collection(db, 'software'));
+    const publicCards = [];
+    const adminItems = [];
+    snapshot.forEach(docSnap=>{
+      const data = docSnap.data();
+      const id = docSnap.id;
+      // Public view
+      publicCards.push(`
+        <div class="software">
+          <img src="${data.imageUrl || 'https://via.placeholder.com/64'}" alt="${data.title}">
+          <h2>[${data.folder}] ${data.title}</h2>
+          <a class="download-btn" href="${data.downloadUrl}" download>Download</a>
+          <p class="checksum">${data.checksum}</p>
+        </div>
+      `);
+      // Admin list
+      adminItems.push(`
+        <div class="software-admin-item">
+          <strong>[${data.folder}] ${data.title}</strong>
+          <button class="btn btn-danger" onclick="deleteSoftware('${id}')">Delete</button>
+        </div>
+      `);
+    });
+    softwareList.innerHTML = publicCards.join('');
+    adminSoftwareList.innerHTML = adminItems.join('');
+  } catch (err) {
+    console.error('Load software error:', err);
+    alert('Failed to load software list. Check Firebase rules.');
+  }
 }
 
-// Delete software (Fixed)
+// Delete software
 window.deleteSoftware = async (id)=>{
   if (!confirm('Delete this software?')) return;
   const docRef = doc(db, 'software', id);
@@ -285,6 +349,7 @@ window.deleteSoftware = async (id)=>{
       alert('Document not found.');
     }
   } catch (error) {
+    console.error('Delete error:', error);
     alert('Error deleting: ' + error.message);
   }
 };
@@ -293,10 +358,13 @@ window.deleteSoftware = async (id)=>{
 searchBox.addEventListener('input', ()=>{
   const term = searchBox.value.toLowerCase();
   Array.from(softwareList.getElementsByClassName('software')).forEach(card=>{
-    const title = card.querySelector('h2').textContent.toLowerCase();
+    const title = card.querySelector('h2')?.textContent.toLowerCase() || '';
     card.style.display = title.includes(term)?'block':'none';
   });
 });
+
+// Initial load
+loadSoftware();
 </script>
 </body>
 </html>
