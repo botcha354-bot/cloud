@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My Software Downloads</title>
+<title>Cloud folder</title>
 <link rel="icon" href="icon.png" type="image/png">
 <style>
 body { font-family: Arial,sans-serif; margin:0; padding:20px; max-width:1000px; margin:auto; background:#f8f9fa; color:#333; }
@@ -23,8 +23,12 @@ select { padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ccc; 
 .modal { display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); }
 .modal-content { background:#fff; margin:15% auto; padding:20px; border-radius:10px; max-width:400px; text-align:center; position:relative; }
 .close { position:absolute; top:10px; right:15px; font-size:28px; cursor:pointer; }
-input[type=email],input[type=text], input[type=password]{ width:90%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ccc; }
- 
+input[type=email], input[type=password], input[type=text] { width:90%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ccc; }
+
+/* Success/Error Modal */
+#messageModal .modal-content { max-width:300px; }
+#messageModal .success { color:#28a745; }
+#messageModal .error { color:#dc3545; }
 
 /* Dashboard */
 #dashboard { display:none; margin-top:20px; background:#fff; padding:20px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.05); }
@@ -86,6 +90,13 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
   </div>
 </div>
 
+<!-- Message Modal -->
+<div id="messageModal" class="modal">
+  <div class="modal-content">
+    <p id="messageText"></p>
+  </div>
+</div>
+
 <!-- Upload Dashboard (now for any logged-in user) -->
 <div id="dashboard">
   <h2>Upload Files</h2>
@@ -94,7 +105,7 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
   <div class="form-group">
     <label for="folderSelect">Select or Add Folder:</label>
     <select id="folderSelect">
-      <option value="">Add New Folder</option>
+      <option value="">-- Add New Folder --</option>
     </select>
     <input type="text" id="newFolderName" placeholder="New folder name" style="display:none; margin-top:5px;">
   </div>
@@ -126,7 +137,7 @@ footer { text-align:center; color:#777; margin-top:40px; font-size:0.9em; }
 <!-- Software Folders -->
 <div class="wrap" id="softwareFolders"></div>
 
-<footer>© 2025 My cloud folder Downloads</footer>
+<footer>© 2025 Cloud Folder</footer>
 
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -155,6 +166,10 @@ const cancelFiles = document.getElementById('cancelFiles');
 const uploadFiles = document.getElementById('uploadFiles');
 const uploadProgress = document.getElementById('uploadProgress');
 
+// Message modal elements
+const messageModal = document.getElementById('messageModal');
+const messageText = document.getElementById('messageText');
+
 let selectedFiles = [];
 let allItems = [];
 let existingFolders = [];
@@ -162,10 +177,29 @@ let existingFolders = [];
 // Image extensions for preview
 const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
 
+// Show message modal (success/error)
+function showMessage(message, isSuccess = true) {
+  messageText.textContent = message;
+  messageText.className = isSuccess ? 'success' : 'error';
+  messageModal.style.display = 'block';
+  setTimeout(() => {
+    messageModal.style.display = 'none';
+  }, 3000);
+}
+
 // User login modal
 userLoginBtn.addEventListener('click', () => loginModal.style.display = 'block');
 loginClose.addEventListener('click', () => loginModal.style.display = 'none');
 window.addEventListener('click', e => { if (e.target === loginModal) loginModal.style.display = 'none'; });
+
+// Enter key for login
+document.getElementById('loginEmail').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') loginSubmit.click();
+});
+document.getElementById('loginPassword').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') loginSubmit.click();
+});
+
 loginSubmit.addEventListener('click', async () => {
   const email = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;
@@ -207,6 +241,11 @@ folderSelect.addEventListener('change', (e) => {
   }
 });
 
+// Initialize folder input visibility on load
+function initializeFolderInput() {
+  newFolderName.style.display = 'block';  // Show by default since select starts with ""
+}
+
 // Drag & Drop
 dropArea.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', (e) => addFiles(e.target.files));
@@ -245,9 +284,9 @@ uploadFiles.addEventListener('click', async () => {
   let folder = folderSelect.value;
   if (!folder) {
     folder = newFolderName.value.trim();
-    if (!folder) { alert('Select or enter a folder name'); return; }
+    if (!folder) { showMessage('Select or enter a folder name', false); return; }
   }
-  if (selectedFiles.length === 0) { alert('No files selected'); return; }
+  if (selectedFiles.length === 0) { showMessage('No files selected', false); return; }
 
   const safeFolder = folder.replace(/[^a-zA-Z0-9_-]/g, '_');
   uploadFiles.disabled = true;
@@ -297,9 +336,9 @@ uploadFiles.addEventListener('click', async () => {
   }
 
   if (errorCount > 0) {
-    alert(`Partial upload: ${successCount} succeeded, ${errorCount} failed.`);
+    showMessage(`Partial upload: ${successCount} succeeded, ${errorCount} failed.`, false);
   } else {
-    alert(`Upload complete! ${successCount} files added to ${safeFolder}.`);
+    showMessage(`Upload complete! ${successCount} files added to ${safeFolder}.`);
   }
 
   selectedFiles = [];
@@ -327,6 +366,9 @@ async function loadSoftware() {
 
     // Populate folder select
     folderSelect.innerHTML = '<option value="">-- Add New Folder --</option>' + folders.map(f => `<option value="${f}">${f}</option>`).join('');
+
+    // Initialize folder input visibility
+    initializeFolderInput();
 
     // Group by folder
     const folderGroups = {};
@@ -401,9 +443,9 @@ window.deleteSoftware = async (id) => {
     await supabase.from('software').delete().eq('id', id);
 
     loadSoftware();
-    alert('Deleted!');
+    showMessage('File deleted successfully!');
   } catch (err) {
-    alert('Delete error: ' + err.message);
+    showMessage('Delete error: ' + err.message, false);
   }
 };
 
