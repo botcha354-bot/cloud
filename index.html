@@ -21,23 +21,28 @@
   .btn-success { background-color: #28a745; color: white; }
   .btn-danger { background-color: #dc3545; color: white; }
   #breadcrumb { margin-bottom: 20px; text-align: center; }
-  #loginModal { display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 1000; }
-  #loginModal .modal-content { background:#fff; padding:20px; max-width:400px; margin:15% auto; border-radius:10px; text-align:center; }
-  #loginModal input { width: 100%; padding:10px; margin:5px 0; border-radius:5px; border:1px solid #ccc; }
+  
+  /* Modal Styles */
+  .modal { display:none; position: fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background: rgba(0,0,0,0.5); }
+  .modal-content { background:#fff; padding:20px; max-width:400px; margin:15% auto; border-radius:10px; text-align:center; position:relative; }
+  .close { position:absolute; top:10px; right:15px; font-size:28px; cursor:pointer; }
+  .modal-content input { width: 100%; padding:10px; margin:5px 0; border-radius:5px; border:1px solid #ccc; }
 </style>
 </head>
 <body>
 
 <h1>Nested Folder Storage</h1>
 
+<!-- Admin Buttons -->
 <div style="text-align:center; margin-bottom:10px;">
   <button class="btn btn-primary" onclick="openLoginModal()">Admin Login</button>
   <button class="btn btn-danger" onclick="logout()" id="logoutBtn" style="display:none;">Logout</button>
 </div>
 
 <!-- Login Modal -->
-<div id="loginModal">
+<div id="loginModal" class="modal">
   <div class="modal-content">
+    <span class="close" onclick="closeLoginModal()">&times;</span>
     <h3>Admin Login</h3>
     <input type="email" id="loginEmail" placeholder="Email">
     <input type="password" id="loginPassword" placeholder="Password">
@@ -46,13 +51,16 @@
   </div>
 </div>
 
+<!-- Breadcrumb -->
 <div id="breadcrumb"></div>
 
+<!-- Admin Controls -->
 <div id="adminControls" style="text-align:center; display:none;">
   <input type="text" id="newFolderName" placeholder="New Folder Name">
   <button class="btn btn-success" onclick="createSubfolder()">Create Folder</button>
 </div>
 
+<!-- Drag & Drop -->
 <div id="dropArea" style="display:none;">
   <p>Drag & drop files here, or click to select</p>
   <input type="file" id="fileInput" multiple style="display:none">
@@ -64,196 +72,179 @@
 <h2>Files</h2>
 <div class="file-list" id="fileList"></div>
 
+<!-- Firebase Scripts -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
-  import { getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-  import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-storage.js";
-  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
+import { getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-storage.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCX4kIednVMV7Lo1BNT7ht6TUsqAiofBC0",
-    authDomain: "cloud-afe3c.firebaseapp.com",
-    projectId: "cloud-afe3c",
-    storageBucket: "cloud-afe3c.firebasestorage.app",
-    messagingSenderId: "149642193133",
-    appId: "1:149642193133:web:cd4f22112f754bb1fdc4e4",
-    measurementId: "G-M9W6KYKEY9"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyCX4kIednVMV7Lo1BNT7ht6TUsqAiofBC0",
+  authDomain: "cloud-afe3c.firebaseapp.com",
+  projectId: "cloud-afe3c",
+  storageBucket: "cloud-afe3c.firebasestorage.app",
+  messagingSenderId: "149642193133",
+  appId: "1:149642193133:web:cd4f22112f754bb1fdc4e4",
+  measurementId: "G-M9W6KYKEY9"
+};
 
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-  const db = getFirestore(app);
-  const storage = getStorage(app);
-  const auth = getAuth(app);
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+const auth = getAuth(app);
 
-  let currentFolderId = null;
+let currentFolderId = null;
 
-  // Auth state listener
-  onAuthStateChanged(auth, user => {
-    if(user){
-      document.getElementById('adminControls').style.display = 'block';
-      document.getElementById('dropArea').style.display = 'block';
-      document.getElementById('logoutBtn').style.display = 'inline-block';
-      document.getElementById('loginModal').style.display = 'none';
-    } else {
-      document.getElementById('adminControls').style.display = 'none';
-      document.getElementById('dropArea').style.display = 'none';
-      document.getElementById('logoutBtn').style.display = 'none';
-    }
+// Auth state listener
+onAuthStateChanged(auth, user => {
+  if(user){
+    document.getElementById('adminControls').style.display = 'block';
+    document.getElementById('dropArea').style.display = 'block';
+    document.getElementById('logoutBtn').style.display = 'inline-block';
+    closeLoginModal();
+  } else {
+    document.getElementById('adminControls').style.display = 'none';
+    document.getElementById('dropArea').style.display = 'none';
+    document.getElementById('logoutBtn').style.display = 'none';
+  }
+});
+
+function openLoginModal(){ document.getElementById('loginModal').style.display='block'; }
+function closeLoginModal(){ document.getElementById('loginModal').style.display='none'; }
+function logout(){ signOut(auth); }
+
+async function login(){
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  try{
+    await signInWithEmailAndPassword(auth,email,password);
+    document.getElementById('loginError').style.display='none';
+  } catch(err){
+    document.getElementById('loginError').style.display='block';
+  }
+}
+
+// Initialize root folder if not exists
+async function initRootFolder() {
+  const rootSnap = await getDocs(collection(db,'folders'));
+  if(rootSnap.empty){
+    const rootRef = await addDoc(collection(db,'folders'), { title:'Root', parentId:null, subfolders:[], files:[] });
+    currentFolderId = rootRef.id;
+  } else {
+    const rootDoc = rootSnap.docs.find(d=>d.data().parentId===null);
+    currentFolderId = rootDoc.id;
+  }
+  loadFolder(currentFolderId);
+}
+
+// Load folder content
+async function loadFolder(folderId){
+  currentFolderId = folderId;
+  const folderSnap = await getDoc(doc(db,'folders',folderId));
+  const folderData = folderSnap.data();
+  await renderBreadcrumb(folderId);
+
+  // Render subfolders
+  const folderList = document.getElementById('folderList'); folderList.innerHTML='';
+  for(let subId of folderData.subfolders){
+    const subSnap = await getDoc(doc(db,'folders',subId));
+    const subData = subSnap.data();
+    const div = document.createElement('div'); div.className='folder-card';
+    div.innerHTML = `<span>${subData.title}</span><br>`;
+    const openBtn = document.createElement('button'); openBtn.textContent='Open'; openBtn.className='btn btn-primary';
+    openBtn.onclick = ()=>loadFolder(subId); div.appendChild(openBtn);
+    const delBtn = document.createElement('button'); delBtn.textContent='Delete'; delBtn.className='btn btn-danger';
+    delBtn.onclick = ()=>deleteFolder(subId); div.appendChild(delBtn);
+    folderList.appendChild(div);
+  }
+
+  // Render files
+  const fileList = document.getElementById('fileList'); fileList.innerHTML='';
+  for(let file of folderData.files){
+    const div = document.createElement('div'); div.className='file-card';
+    div.innerHTML = `<span>${file.name}</span><br><a class="btn btn-primary" href="${file.url}" download>Download</a>`;
+    const delBtn = document.createElement('button'); delBtn.textContent='Delete'; delBtn.className='btn btn-danger';
+    delBtn.onclick = ()=>deleteFile(file.name); div.appendChild(delBtn);
+    fileList.appendChild(div);
+  }
+}
+
+// Render breadcrumb
+async function renderBreadcrumb(folderId){
+  const breadcrumbDiv = document.getElementById('breadcrumb'); breadcrumbDiv.innerHTML='';
+  let path=[]; let currentId=folderId;
+  while(currentId){
+    const docSnap = await getDoc(doc(db,'folders',currentId));
+    const data = docSnap.data();
+    path.unshift({id:currentId,title:data.title});
+    currentId = data.parentId;
+  }
+  path.forEach((p,index)=>{
+    const span=document.createElement('span'); span.textContent=p.title; span.style.cursor='pointer'; span.style.textDecoration='underline';
+    span.onclick=()=>loadFolder(p.id); breadcrumbDiv.appendChild(span);
+    if(index<path.length-1) breadcrumbDiv.appendChild(document.createTextNode(' / '));
   });
+}
 
-  function openLoginModal(){ document.getElementById('loginModal').style.display='block'; }
-  function logout(){ signOut(auth); }
+// Create subfolder
+async function createSubfolder(){
+  const name=document.getElementById('newFolderName').value.trim();
+  if(!name) return alert('Folder name cannot be empty');
+  const newFolderRef = await addDoc(collection(db,'folders'), { title:name, parentId:currentFolderId, subfolders:[], files:[] });
+  await updateDoc(doc(db,'folders',currentFolderId), { subfolders: arrayUnion(newFolderRef.id) });
+  document.getElementById('newFolderName').value='';
+  loadFolder(currentFolderId);
+}
 
-  async function login(){
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
-    try{
-      await signInWithEmailAndPassword(auth, email, password);
-      document.getElementById('loginError').style.display='none';
-    } catch(err){
-      document.getElementById('loginError').style.display='block';
-    }
+// Delete folder recursively
+async function deleteFolder(folderId){
+  if(!confirm('Delete this folder and all contents?')) return;
+  const folderSnap = await getDoc(doc(db,'folders',folderId)); const folderData=folderSnap.data();
+  for(let file of folderData.files){ await deleteObject(ref(storage, `folders/${folderId}/${file.name}`)); }
+  for(let subId of folderData.subfolders){ await deleteFolder(subId); }
+  if(folderData.parentId) await updateDoc(doc(db,'folders',folderData.parentId), { subfolders: arrayRemove(folderId) });
+  await deleteDoc(doc(db,'folders',folderId));
+  loadFolder(currentFolderId);
+}
+
+// Delete file
+async function deleteFile(fileName){
+  if(!confirm('Delete this file?')) return;
+  const fileRef = ref(storage, `folders/${currentFolderId}/${fileName}`);
+  await deleteObject(fileRef);
+  const folderRef = doc(db,'folders',currentFolderId);
+  const folderSnap = await getDoc(folderRef); const folderData=folderSnap.data();
+  const newFiles = folderData.files.filter(f=>f.name!==fileName);
+  await updateDoc(folderRef,{ files: newFiles });
+  loadFolder(currentFolderId);
+}
+
+// Drag & Drop Upload
+const dropArea=document.getElementById('dropArea'); const fileInput=document.getElementById('fileInput');
+dropArea.addEventListener('click',()=>fileInput.click());
+fileInput.addEventListener('change', ()=>handleFiles(fileInput.files));
+dropArea.addEventListener('dragover', e=>{ e.preventDefault(); dropArea.classList.add('dragover'); });
+dropArea.addEventListener('dragleave', e=>{ e.preventDefault(); dropArea.classList.remove('dragover'); });
+dropArea.addEventListener('drop', e=>{ e.preventDefault(); dropArea.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
+
+async function handleFiles(files){
+  for(const file of files){
+    const storageRef=ref(storage, `folders/${currentFolderId}/${file.name}`);
+    await uploadBytes(storageRef,file);
+    const url = await getDownloadURL(storageRef);
+    const folderRef=doc(db,'folders',currentFolderId);
+    const folderSnap = await getDoc(folderRef); const folderData = folderSnap.data();
+    const newFiles = folderData.files.concat({name:file.name, url:url});
+    await updateDoc(folderRef,{ files: newFiles });
   }
+  loadFolder(currentFolderId);
+}
 
-  async function initRootFolder() {
-    const rootSnap = await getDocs(collection(db, 'folders'));
-    if(rootSnap.empty){
-      const rootRef = await addDoc(collection(db, 'folders'), {
-        title:'Root', parentId:null, subfolders:[], files:[]
-      });
-      currentFolderId = rootRef.id;
-    } else {
-      const rootDoc = rootSnap.docs.find(d=>d.data().parentId===null);
-      currentFolderId = rootDoc.id;
-    }
-    loadFolder(currentFolderId);
-  }
-
-  async function loadFolder(folderId){
-    currentFolderId = folderId;
-    const folderSnap = await getDoc(doc(db, 'folders', folderId));
-    const folderData = folderSnap.data();
-
-    await renderBreadcrumb(folderId);
-
-    const folderList = document.getElementById('folderList');
-    folderList.innerHTML='';
-    for(let subId of folderData.subfolders){
-      const subSnap = await getDoc(doc(db,'folders',subId));
-      const subData = subSnap.data();
-      const div = document.createElement('div');
-      div.className='folder-card';
-      div.innerHTML = `<span>${subData.title}</span><br>`;
-      const openBtn = document.createElement('button');
-      openBtn.textContent = 'Open'; openBtn.className='btn btn-primary';
-      openBtn.onclick = ()=>loadFolder(subId);
-      div.appendChild(openBtn);
-      const delBtn = document.createElement('button');
-      delBtn.textContent='Delete'; delBtn.className='btn btn-danger';
-      delBtn.onclick=()=>deleteFolder(subId);
-      div.appendChild(delBtn);
-      folderList.appendChild(div);
-    }
-
-    const fileList = document.getElementById('fileList');
-    fileList.innerHTML='';
-    for(let file of folderData.files){
-      const div = document.createElement('div');
-      div.className='file-card';
-      div.innerHTML = `<span>${file.name}</span><br><a class="btn btn-primary" href="${file.url}" download>Download</a>`;
-      const delBtn = document.createElement('button');
-      delBtn.textContent='Delete'; delBtn.className='btn btn-danger';
-      delBtn.onclick=()=>deleteFile(file.name);
-      div.appendChild(delBtn);
-      fileList.appendChild(div);
-    }
-  }
-
-  async function renderBreadcrumb(folderId){
-    const breadcrumbDiv = document.getElementById('breadcrumb');
-    let path=[]; let currentId=folderId;
-    while(currentId){
-      const docSnap = await getDoc(doc(db,'folders',currentId));
-      const data = docSnap.data();
-      path.unshift({id:currentId,title:data.title});
-      currentId = data.parentId;
-    }
-    breadcrumbDiv.innerHTML='';
-    path.forEach((p,index)=>{
-      const span=document.createElement('span');
-      span.textContent=p.title;
-      span.style.cursor='pointer'; span.style.textDecoration='underline';
-      span.onclick=()=>loadFolder(p.id);
-      breadcrumbDiv.appendChild(span);
-      if(index<path.length-1) breadcrumbDiv.appendChild(document.createTextNode(' / '));
-    });
-  }
-
-  async function createSubfolder(){
-    const name = document.getElementById('newFolderName').value.trim();
-    if(!name) return alert('Folder name cannot be empty');
-    const newFolderRef = await addDoc(collection(db,'folders'),{
-      title:name, parentId:currentFolderId, subfolders:[], files:[]
-    });
-    const parentRef = doc(db,'folders',currentFolderId);
-    await updateDoc(parentRef,{ subfolders: arrayUnion(newFolderRef.id) });
-    document.getElementById('newFolderName').value='';
-    loadFolder(currentFolderId);
-  }
-
-  async function deleteFolder(folderId){
-    if(!confirm('Delete this folder and all its files?')) return;
-    const folderSnap = await getDoc(doc(db,'folders',folderId));
-    const folderData = folderSnap.data();
-    // delete all files
-    for(let file of folderData.files){
-      const fileRef = ref(storage, `folders/${folderId}/${file.name}`);
-      await deleteObject(fileRef);
-    }
-    // delete subfolders recursively
-    for(let subId of folderData.subfolders){
-      await deleteFolder(subId);
-    }
-    // remove from parent
-    const parentRef = doc(db,'folders',folderData.parentId);
-    if(folderData.parentId) await updateDoc(parentRef,{ subfolders: arrayRemove(folderId) });
-    await deleteDoc(doc(db,'folders',folderId));
-    loadFolder(currentFolderId);
-  }
-
-  async function deleteFile(fileName){
-    if(!confirm('Delete this file?')) return;
-    const fileRef = ref(storage, `folders/${currentFolderId}/${fileName}`);
-    await deleteObject(fileRef);
-    const folderRef = doc(db,'folders',currentFolderId);
-    await updateDoc(folderRef,{ files: arrayRemove({name:fileName, url: await getDownloadURL(fileRef)}) });
-    loadFolder(currentFolderId);
-  }
-
-  // Drag & Drop Upload
-  const dropArea = document.getElementById('dropArea');
-  const fileInput = document.getElementById('fileInput');
-  dropArea.addEventListener('click',()=>fileInput.click());
-  fileInput.addEventListener('change', ()=>handleFiles(fileInput.files));
-  dropArea.addEventListener('dragover', e=>{ e.preventDefault(); dropArea.classList.add('dragover'); });
-  dropArea.addEventListener('dragleave', e=>{ e.preventDefault(); dropArea.classList.remove('dragover'); });
-  dropArea.addEventListener('drop', e=>{ e.preventDefault(); dropArea.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
-
-  async function handleFiles(files){
-    for(const file of files){
-      const storageRef = ref(storage, `folders/${currentFolderId}/${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      const folderRef = doc(db,'folders',currentFolderId);
-      await updateDoc(folderRef,{ files: arrayUnion({name:file.name, url:url, uploadedAt: Date.now()}) });
-    }
-    loadFolder(currentFolderId);
-  }
-
-  // Initialize
-  initRootFolder();
+// Initialize
+initRootFolder();
 </script>
 </body>
 </html>
